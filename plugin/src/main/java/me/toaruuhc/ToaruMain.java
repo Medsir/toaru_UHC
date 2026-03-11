@@ -12,6 +12,6 @@ public class ToaruMain extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        getLogger().info("Arret du systeme Toaru. ");
+        getLogger().info("Arret du systeme Toaru.");
     }
 }
