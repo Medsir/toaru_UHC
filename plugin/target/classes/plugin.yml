@@ -1,0 +1,27 @@
+name: ToaruUHC
+version: '1.0-SNAPSHOT'
+main: fr.medsir.toaruhc.ToaruUHC
+api-version: '1.20'
+description: "UHC Plugin - Academy City | A Certain Magical Index x Railgun"
+authors: [Medsir]
+website: https://github.com/Medsir/toaru_UHC
+
+commands:
+  uhc:
+    description: Commande principale du UHC
+    usage: /uhc <start|stop|status|forcestart>
+    permission: toaruhc.admin
+  role:
+    description: Voir son rôle/pouvoir
+    usage: /role
+  power:
+    description: Activer son pouvoir
+    usage: /power
+
+permissions:
+  toaruhc.admin:
+    description: Accès aux commandes admin du UHC
+    default: op
+  toaruhc.play:
+    description: Permission de jouer
+    default: true
