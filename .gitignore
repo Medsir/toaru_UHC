@@ -15,6 +15,9 @@
 *.iml
 .vscode/
 
+# Build File
+/plugin/target
+
 # Package Files #
 *.jar
 *.war

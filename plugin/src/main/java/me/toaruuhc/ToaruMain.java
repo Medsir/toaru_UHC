@@ -7,7 +7,7 @@ public class ToaruMain extends JavaPlugin {
     @Override
     public void onEnable() {
         // Ce message s'affichera dans la console de ton serveur Minecraft
-        getLogger().info("Le systeme de la Cite Scolaire est en ligne !");
+        getLogger().info("Le systeme de la Cite Academique est en ligne !");
     }
 
     @Override
