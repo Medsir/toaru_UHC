@@ -15,6 +15,7 @@ fr/medsir/toaruhc/powers/esper/TeleportPower.class
 fr/medsir/toaruhc/managers/PowerManager.class
 fr/medsir/toaruhc/roles/Role$RoleType.class
 fr/medsir/toaruhc/commands/PowerCommand.class
+fr/medsir/toaruhc/managers/ScoreboardManager.class
 fr/medsir/toaruhc/listeners/PlayerListener.class
 fr/medsir/toaruhc/powers/magician/SaintPower.class
 fr/medsir/toaruhc/listeners/GameListener.class
