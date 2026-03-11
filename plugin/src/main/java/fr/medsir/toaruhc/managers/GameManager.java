@@ -26,11 +26,11 @@ public class GameManager {
         this.maxMana              = plugin.getConfig().getInt("powers.mana.max", 100);
     }
 
-    public void startGame() {
+    public void startGame(boolean testing) {
         if (state != GameState.WAITING) return;
         for (Player p : Bukkit.getOnlinePlayers())
             players.put(p.getUniqueId(), new UHCPlayer(p.getUniqueId(), maxAim, maxMana));
-        if (players.size() < 1) {
+        if (players.size() < 2 && !testing) {
             broadcastPrefix("§cPas assez de joueurs ! (" + players.size() + "/" + minPlayers + ")");
             players.clear(); return;
         }
