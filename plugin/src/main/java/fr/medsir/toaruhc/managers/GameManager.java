@@ -21,7 +21,7 @@ public class GameManager {
         this.borderSize           = plugin.getConfig().getInt("game.border-size", 1000);
         this.borderFinalSize      = plugin.getConfig().getInt("game.border-final-size", 50);
         this.borderShrinkDuration = plugin.getConfig().getInt("game.border-shrink-duration", 30);
-        this.minPlayers           = plugin.getConfig().getInt("game.min-players", 2);
+        this.minPlayers           = plugin.getConfig().getInt("game.min-players", 1);
         this.maxAim               = plugin.getConfig().getInt("powers.aim.max", 100);
         this.maxMana              = plugin.getConfig().getInt("powers.mana.max", 100);
     }
@@ -30,7 +30,7 @@ public class GameManager {
         if (state != GameState.WAITING) return;
         for (Player p : Bukkit.getOnlinePlayers())
             players.put(p.getUniqueId(), new UHCPlayer(p.getUniqueId(), maxAim, maxMana));
-        if (players.size() < minPlayers) {
+        if (players.size() < 1) {
             broadcastPrefix("§cPas assez de joueurs ! (" + players.size() + "/" + minPlayers + ")");
             players.clear(); return;
         }

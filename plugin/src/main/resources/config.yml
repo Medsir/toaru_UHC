@@ -4,7 +4,7 @@ game:
   border-size: 1000
   border-final-size: 50
   border-shrink-duration: 30
-  min-players: 2
+  min-players: 1
   natural-regen: false
 
 powers:
