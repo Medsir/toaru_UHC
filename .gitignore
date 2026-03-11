@@ -15,7 +15,6 @@
 *.iml
 .vscode/
 
-
 # Package Files #
 *.jar
 *.war
