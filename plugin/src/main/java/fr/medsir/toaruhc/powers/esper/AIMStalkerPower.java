@@ -71,11 +71,12 @@ public class AIMStalkerPower extends Power {
         ToaruUHC.getInstance().getPowerManager().updateEnergyBar(uhcPlayer);
 
         // Effets sur la cible
+        final Player finalTarget = target; // effectively final pour le lambda
         target.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 100, 0)); // 5s
         target.setGlowing(true);
         ToaruUHC.getInstance().getServer().getScheduler()
             .runTaskLater(ToaruUHC.getInstance(), () -> {
-                if (target.isOnline()) target.setGlowing(false);
+                if (finalTarget.isOnline()) finalTarget.setGlowing(false);
             }, 120L); // 6s
 
         // Trait de particules de la cible vers soi
