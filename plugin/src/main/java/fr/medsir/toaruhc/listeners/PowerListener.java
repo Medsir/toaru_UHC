@@ -1,6 +1,7 @@
 package fr.medsir.toaruhc.listeners;
 
 import fr.medsir.toaruhc.ToaruUHC;
+import fr.medsir.toaruhc.core.GameState;
 import fr.medsir.toaruhc.models.UHCPlayer;
 import fr.medsir.toaruhc.powers.Power;
 import fr.medsir.toaruhc.powers.esper.AcceleratorPower;
@@ -49,6 +50,13 @@ public class PowerListener implements Listener {
         UHCPlayer u = plugin.getGameManager().getUHCPlayer(player);
         if (u == null || !u.isAlive()) return;
 
+        // Pouvoirs disponibles uniquement en phase PvP et Endgame
+        GameState state = plugin.getGameManager().getState();
+        if (state != GameState.PVP && state != GameState.ENDGAME) {
+            player.sendMessage("§c⚠ Les pouvoirs ne sont disponibles qu'à partir du PvP !");
+            return;
+        }
+
         Power power = u.getPower();
         if (power == null) return;
 
@@ -74,7 +82,7 @@ public class PowerListener implements Listener {
             (current != null && current.getType() == POWER_ITEM && isPowerItem(current)) ||
             (cursor  != null && cursor.getType()  == POWER_ITEM && isPowerItem(cursor));
 
-        if (isMovingPowerItem || event.getSlot() == 0) {
+        if (isMovingPowerItem) {
             event.setCancelled(true);
         }
     }

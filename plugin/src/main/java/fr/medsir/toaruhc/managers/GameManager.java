@@ -22,7 +22,7 @@ public class GameManager {
     public GameManager(ToaruUHC plugin) {
         this.plugin = plugin;
         this.miningDuration       = plugin.getConfig().getInt("game.mining-phase-duration", 20);
-        this.borderSize           = plugin.getConfig().getInt("game.border-size", 1000);
+        this.borderSize           = plugin.getConfig().getInt("game.border-size", 4000);
         this.borderFinalSize      = plugin.getConfig().getInt("game.border-final-size", 50);
         this.borderShrinkDuration = plugin.getConfig().getInt("game.border-shrink-duration", 30);
         this.minPlayers           = plugin.getConfig().getInt("game.min-players", 1);
@@ -43,6 +43,7 @@ public class GameManager {
 
     public void startGame(boolean testing, String roleName) {
         if (state != GameState.WAITING) return;
+        setPvP(false); // Désactiver le PvP dès le lancement
         this.testing = testing;
         for (Player p : Bukkit.getOnlinePlayers())
             players.put(p.getUniqueId(), new UHCPlayer(p.getUniqueId(), maxAim, maxMana));
@@ -199,6 +200,20 @@ public class GameManager {
         String killerName = (killer != null) ? killer.getName() : "l'environnement";
         broadcastPrefix("§c☠ " + victim.getName() + " §7éliminé par §c" + killerName + " §8(" + uhcVictim.getKills() + " kills)");
         if (killer != null) { UHCPlayer k = players.get(killer.getUniqueId()); if (k != null) k.addKill(); }
+        checkWinCondition();
+    }
+
+    /**
+     * Gère la déconnexion d'un joueur en cours de partie :
+     * le retire silencieusement (pas de message de mort, pas de kill crédité).
+     */
+    public void handlePlayerQuit(Player player) {
+        UHCPlayer u = players.get(player.getUniqueId());
+        if (u == null || !u.isAlive()) return;
+        u.setAlive(false);
+        if (u.getPower() != null) u.getPower().deactivate(u);
+        plugin.getPowerManager().removeEnergyBar(player.getUniqueId());
+        broadcastPrefix("§7☁ " + player.getName() + " §7a quitté la partie.");
         checkWinCondition();
     }
 
