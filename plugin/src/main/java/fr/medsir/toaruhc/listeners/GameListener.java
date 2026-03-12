@@ -38,7 +38,7 @@ public class GameListener implements Listener {
         if (!plugin.getGameManager().isRunning()) return;
         Player player = event.getPlayer();
         UHCPlayer u = plugin.getGameManager().getUHCPlayer(player);
-        if (u != null && u.isAlive()) plugin.getGameManager().handlePlayerDeath(player, null);
+        if (u != null && u.isAlive()) plugin.getGameManager().handlePlayerQuit(player);
         plugin.getPowerManager().removeEnergyBar(player.getUniqueId());
     }
 }
