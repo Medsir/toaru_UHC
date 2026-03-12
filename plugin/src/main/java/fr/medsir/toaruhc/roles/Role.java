@@ -36,6 +36,7 @@ public class Role {
     public RoleType getType()      { return type; }
     public Power getPower()        { return power; }
     public String getLore()        { return lore; }
+    public int getModelId()        { return power.getCustomModelId();}
 
     public enum RoleType { ESPER, MAGICIAN }
 }

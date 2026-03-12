@@ -24,6 +24,7 @@ public class OnmyoudouPower extends Power {
         super("onmyoudou", "§8🌑 Onmyoudou §7(Tsuchimikado Motoharu)",
               "Maudit un ennemi en vue — Slowness + Cécité + Nausée. Retour de dégâts.",
               PowerType.MAGICIAN, 30, 20);
+        setCustomModelId(9);
     }
 
     @Override

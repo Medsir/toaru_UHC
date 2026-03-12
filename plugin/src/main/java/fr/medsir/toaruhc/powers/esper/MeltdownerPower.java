@@ -26,6 +26,7 @@ public class MeltdownerPower extends Power {
         super("meltdowner", "§c🔴 Meltdowner §7(Mugino Shizuri)",
               "Faisceau plasma — Wither II + Cécité à l'impact.",
               PowerType.ESPER, 40, 18);
+        setCustomModelId(4);
     }
 
     @Override

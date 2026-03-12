@@ -16,6 +16,7 @@ public class SaintPower extends Power {
         super("saint_power", "§6⚔ Saint's Power §7(Kanzaki Kaori)",
               "Force II + Regen II + Résistance I pendant 8s.",
               PowerType.MAGICIAN, 40, 20);
+        setCustomModelId(10);
     }
 
     @Override

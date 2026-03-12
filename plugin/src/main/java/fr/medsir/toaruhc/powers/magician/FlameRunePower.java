@@ -27,6 +27,7 @@ public class FlameRunePower extends Power {
         super("flame_rune", "§c🔥 Flame Rune §7(Stiyl Magnus)",
               "Pose une rune de feu Innocentius qui brûle les ennemis 10s.",
               PowerType.MAGICIAN, 35, 25);
+        setCustomModelId(7);
     }
 
     @Override

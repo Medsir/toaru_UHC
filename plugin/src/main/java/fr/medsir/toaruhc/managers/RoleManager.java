@@ -90,6 +90,18 @@ public class RoleManager {
         plugin.getLogger().info("[RoleManager] " + availableRoles.size() + " rôles enregistrés.");
     }
 
+    public void distributeRoles(List<UHCPlayer> players, String roleName){
+        //Pour le test : donne un rôle précis a tous les joueurs
+        Role r = availableRoles.get(0);
+        for(Role role : availableRoles){
+            if(role.getId().equals(roleName)){
+                r = role;
+            }
+        }
+        for(UHCPlayer p : players) assignRole(p, r);
+    }
+
+
     public void distributeRoles(List<UHCPlayer> players) {
         List<Role> pool = new ArrayList<>(availableRoles);
         while (pool.size() < players.size()) pool.addAll(availableRoles);
@@ -122,6 +134,9 @@ public class RoleManager {
         ItemMeta meta  = item.getItemMeta();
 
         meta.setDisplayName("§6✦ Pouvoir §8— " + role.getDisplayName());
+
+        //Mise a jour de la meta de l'objet
+        meta.setCustomModelData(role.getModelId());
 
         List<String> lore = new ArrayList<>();
         lore.add("§7" + role.getPower().getName());

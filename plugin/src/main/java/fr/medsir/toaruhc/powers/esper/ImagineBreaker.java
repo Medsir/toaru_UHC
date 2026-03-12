@@ -18,6 +18,7 @@ public class ImagineBreaker extends Power {
         super("imagine_breaker", "§f🖐 Imagine Breaker §7(Kamijou Touma)",
               "Annule tous les effets ennemis au contact + ralentit la cible 5s.",
               PowerType.ESPER, 20, 8);
+        setCustomModelId(3);
     }
 
     @Override

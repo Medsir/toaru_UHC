@@ -3,6 +3,7 @@ package fr.medsir.toaruhc.managers;
 import fr.medsir.toaruhc.ToaruUHC;
 import fr.medsir.toaruhc.core.GameState;
 import fr.medsir.toaruhc.models.UHCPlayer;
+import fr.medsir.toaruhc.roles.Role;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
@@ -28,7 +29,18 @@ public class GameManager {
         this.maxMana              = plugin.getConfig().getInt("powers.mana.max", 100);
     }
 
+
+    public void startGame() {
+        startGame(false);
+    }
+
+
     public void startGame(boolean testing) {
+        startGame(testing, null);
+    }
+
+
+    public void startGame(boolean testing, String roleName) {
         if (state != GameState.WAITING) return;
         this.testing = testing;
         for (Player p : Bukkit.getOnlinePlayers())
@@ -39,7 +51,11 @@ public class GameManager {
         }
         state = GameState.STARTING;
         broadcastPrefix("§aPartie dans §e10s §a! §7(" + players.size() + " joueurs)" + (testing ? " §8[TEST]" : ""));
-        plugin.getRoleManager().distributeRoles(new ArrayList<>(players.values()));
+        if(roleName == null) {
+            plugin.getRoleManager().distributeRoles(new ArrayList<>(players.values()));
+        }else{
+            plugin.getRoleManager().distributeRoles(new ArrayList<>(players.values()), roleName);
+        }
         players.values().forEach(plugin.getPowerManager()::createEnergyBar);
         for (World w : Bukkit.getWorlds()) w.setGameRule(GameRule.NATURAL_REGENERATION, false);
         int effectiveMining = testing ? 1 : miningDuration;
@@ -52,6 +68,8 @@ public class GameManager {
             pvpTask = plugin.getServer().getScheduler().runTaskLater(plugin, this::enablePvP, 20L * 60 * effectiveMining);
         });
     }
+
+
 
     private void enablePvP() {
         state = GameState.PVP; setPvP(true);

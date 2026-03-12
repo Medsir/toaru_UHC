@@ -19,6 +19,7 @@ public class TeleportPower extends Power {
         super("teleport", "§d🌀 Teleport §7(Shirai Kuroko)",
               "Téléportation instantanée 15 blocs devant soi.",
               PowerType.ESPER, 25, 6);
+        setCustomModelId(6);
     }
 
     @Override

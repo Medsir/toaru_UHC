@@ -23,6 +23,7 @@ public class GutsPower extends Power {
         super("guts", "§6💥 Guts §7(Sogiita Gunha)",
               "Explosion AOE + knockback. GUTS MODE si HP faibles !",
               PowerType.ESPER, 35, 20);
+        setCustomModelId(2);
     }
 
     @Override

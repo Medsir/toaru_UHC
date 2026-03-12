@@ -7,12 +7,14 @@ public abstract class Power {
     private final String id, name, description;
     private final PowerType type;
     private final int aimOrManaCost, cooldownSeconds;
+    private int customModelId;
 
     public Power(String id, String name, String description,
                  PowerType type, int aimOrManaCost, int cooldownSeconds) {
         this.id = id; this.name = name; this.description = description;
         this.type = type; this.aimOrManaCost = aimOrManaCost;
         this.cooldownSeconds = cooldownSeconds;
+        this.customModelId = 0;
     }
 
     public abstract boolean activate(UHCPlayer uhcPlayer);
@@ -38,6 +40,18 @@ public abstract class Power {
         if (type == PowerType.ESPER) uhcPlayer.setAim(uhcPlayer.getAim() - aimOrManaCost);
         else uhcPlayer.setMana(uhcPlayer.getMana() - aimOrManaCost);
         if (cooldownSeconds > 0) uhcPlayer.setCooldown(this.id, cooldownSeconds);
+    }
+
+    public void setCustomModelId(int id){
+        //Setter pour le modele custom
+        //Pour chaque pouvoir, assigner un id de model custom pour lier la texture
+        if(id >= 0) {
+            customModelId = id;
+        }
+    }
+
+    public int getCustomModelId(){
+        return customModelId;
     }
 
     public String getId()           { return id; }

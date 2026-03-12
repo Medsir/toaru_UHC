@@ -22,6 +22,7 @@ public class AcceleratorPower extends Power {
         super("vector_manipulation", "§f☣ Vector Manipulation §7(Accelerator)",
               "Réfléchit la prochaine attaque ×1.5 + propulsion.",
               PowerType.ESPER, 35, 15);
+        setCustomModelId(1);
     }
 
     @Override

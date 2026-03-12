@@ -23,6 +23,7 @@ public class RailgunPower extends Power {
         super("railgun", "§e⚡ Railgun §7(Misaka Mikoto)",
               "Lance un trait électrique dévastateur devant soi.",
               PowerType.ESPER, 30, 12);
+        setCustomModelId(5);
     }
 
     @Override

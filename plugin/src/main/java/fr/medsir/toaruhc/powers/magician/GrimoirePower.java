@@ -30,6 +30,7 @@ public class GrimoirePower extends Power {
         super("grimoire", "§e📖 103 000 Grimoires §7(Index)",
               "Active un grimoire aléatoire : malédiction, protection ou banissement.",
               PowerType.MAGICIAN, 30, 18);
+        setCustomModelId(8);
     }
 
     @Override
