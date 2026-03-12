@@ -16,7 +16,8 @@ public class UHCPlayer {
     private final Map<String, Long> cooldowns = new HashMap<>();
     private int kills = 0;
     private boolean alive = true;
-    private boolean imagineBreaker = false;
+    private boolean imagineBreaker  = false;
+    private boolean acceleratorMode = false;
 
     public UHCPlayer(UUID uuid, int maxAim, int maxMana) {
         this.uuid = uuid; this.maxAim = maxAim; this.maxMana = maxMana;
@@ -57,10 +58,12 @@ public class UHCPlayer {
     public Power getPower() { return power; }
     public int getKills()   { return kills; }
     public boolean isAlive(){ return alive; }
-    public boolean hasImagineBreaker() { return imagineBreaker; }
+    public boolean hasImagineBreaker()  { return imagineBreaker; }
+    public boolean hasAcceleratorMode() { return acceleratorMode; }
     public void setRole(Role r)    { this.role  = r; }
     public void setPower(Power p)  { this.power = p; }
     public void setAlive(boolean v){ this.alive = v; }
-    public void setImagineBreaker(boolean v) { this.imagineBreaker = v; }
+    public void setImagineBreaker(boolean v)  { this.imagineBreaker  = v; }
+    public void setAcceleratorMode(boolean v) { this.acceleratorMode = v; }
     public void addKill() { this.kills++; }
 }
