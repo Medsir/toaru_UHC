@@ -20,12 +20,12 @@ public class UHCCommand implements CommandExecutor, TabCompleter {
 
 
         switch (args[0].toLowerCase()) {
-            case "start" -> { if (plugin.getGameManager().isRunning()) { sender.sendMessage(prefix + "§cPartie déjà en cours !"); return true; } plugin.getGameManager().startGame(false); }
+            case "start" -> { if (plugin.getGameManager().isRunning()) { sender.sendMessage(prefix + "§cPartie déjà en cours !"); return true; } plugin.getGameManager().startGame(); }
             case "stop"  -> { if (!plugin.getGameManager().isRunning()) { sender.sendMessage(prefix + "§cAucune partie."); return true; } plugin.getGameManager().stopGame(); }
             case "status" -> { sender.sendMessage(prefix + "§7État : §e" + plugin.getGameManager().getState()); long alive = plugin.getGameManager().getPlayers().values().stream().filter(p->p.isAlive()).count(); sender.sendMessage(prefix + "§7Survivants : §a" + alive); }
             case "test" -> { if (plugin.getGameManager().isRunning()) { sender.sendMessage(prefix + "§cPartie déjà en cours !"); return true; } plugin.getGameManager().startGame(true, testRoleName); }
-            case "forcestart" -> plugin.getGameManager().startGame(false);
-            default -> sender.sendMessage(prefix + "§7/uhc <start|stop|status|forcestart>");
+            case "forcestart" -> plugin.getGameManager().startGame();
+            default -> sender.sendMessage(prefix + "§7/uhc <start|stop|status|forcestart|test>");
         }
         return true;
     }
@@ -36,7 +36,7 @@ public class UHCCommand implements CommandExecutor, TabCompleter {
             return Arrays.asList("start", "stop", "status", "forcestart", "test");
         }
         if(args.length == 2 && args[0].equals("test")){
-            return Arrays.asList("accelerator");
+            return plugin.getRoleManager().getRoleNames();
         }
         return List.of();
     }

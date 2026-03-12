@@ -92,13 +92,11 @@ public class RoleManager {
 
     public void distributeRoles(List<UHCPlayer> players, String roleName){
         //Pour le test : donne un rôle précis a tous les joueurs
-        Role r = availableRoles.get(0);
-        for(Role role : availableRoles){
-            if(role.getId().equals(roleName)){
-                r = role;
-            }
+        if(roleName == null){
+            distributeRoles(players);
+            return;
         }
-        for(UHCPlayer p : players) assignRole(p, r);
+        for(UHCPlayer p : players) assignRole(p, getRole(roleName));
     }
 
 
@@ -153,9 +151,24 @@ public class RoleManager {
         item.setItemMeta(meta);
 
         // Forcer le slot 0
-        player.getInventory().setItem(0, item);
-        player.getInventory().setHeldItemSlot(0);
+        player.getInventory().setItem(8, item);
+        player.getInventory().setHeldItemSlot(8);
     }
 
     public List<Role> getAvailableRoles() { return Collections.unmodifiableList(availableRoles); }
+
+    public List<String> getRoleNames(){
+        List<String> l = new ArrayList<>();
+        for(Role r: getAvailableRoles()){
+            l.add(r.getId());
+        }
+        return Collections.unmodifiableList(l);
+    }
+
+    public Role getRole(String id){
+        for(Role r: getAvailableRoles()){
+            if (r.getId().equals(id)) return r;
+        }
+        return null;
+    }
 }

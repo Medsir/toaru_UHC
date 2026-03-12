@@ -51,11 +51,7 @@ public class GameManager {
         }
         state = GameState.STARTING;
         broadcastPrefix("§aPartie dans §e10s §a! §7(" + players.size() + " joueurs)" + (testing ? " §8[TEST]" : ""));
-        if(roleName == null) {
-            plugin.getRoleManager().distributeRoles(new ArrayList<>(players.values()));
-        }else{
-            plugin.getRoleManager().distributeRoles(new ArrayList<>(players.values()), roleName);
-        }
+        plugin.getRoleManager().distributeRoles(new ArrayList<>(players.values()), roleName);
         players.values().forEach(plugin.getPowerManager()::createEnergyBar);
         for (World w : Bukkit.getWorlds()) w.setGameRule(GameRule.NATURAL_REGENERATION, false);
         int effectiveMining = testing ? 1 : miningDuration;
