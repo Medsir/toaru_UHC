@@ -83,7 +83,7 @@ public class PowerListener implements Listener {
             (cursor  != null && cursor.getType()  == POWER_ITEM && isPowerItem(cursor));
 
         if (isMovingPowerItem) {
-            event.setCancelled(true);
+            //event.setCancelled(true);
         }
     }
 
@@ -93,6 +93,7 @@ public class PowerListener implements Listener {
     @EventHandler
     public void onItemDrop(PlayerDropItemEvent event) {
         if (!plugin.getGameManager().isRunning()) return;
+        Player player = event.getPlayer();
         ItemStack item = event.getItemDrop().getItemStack();
         if (item.getType() == POWER_ITEM && isPowerItem(item)) {
             event.setCancelled(true);

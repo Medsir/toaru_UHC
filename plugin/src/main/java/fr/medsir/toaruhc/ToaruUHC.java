@@ -40,6 +40,7 @@ public class ToaruUHC extends JavaPlugin {
 
         // Scoreboard actif dès le lancement (même en attente)
         scoreboardManager.start();
+        gameManager.setPvp(false);
 
         getLogger().info("ToaruUHC activé ! Bienvenue dans Academy City.");
     }

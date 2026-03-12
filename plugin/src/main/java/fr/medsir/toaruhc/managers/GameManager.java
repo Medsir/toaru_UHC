@@ -277,4 +277,5 @@ public class GameManager {
     public Map<UUID, UHCPlayer> getPlayers() { return Collections.unmodifiableMap(players); }
     public UHCPlayer getUHCPlayer(UUID uuid) { return players.get(uuid); }
     public UHCPlayer getUHCPlayer(Player p)  { return players.get(p.getUniqueId()); }
+    public void setPvp(boolean state)                 { setPvP(state);}
 }
