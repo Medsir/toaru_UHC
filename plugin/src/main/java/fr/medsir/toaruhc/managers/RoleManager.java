@@ -87,6 +87,30 @@ public class RoleManager {
             Role.RoleType.MAGICIAN, new GrimoirePower(),
             "Je n'ai pas de super pouvoirs, mais j'ai 103 000 livres de magie !"));
 
+        availableRoles.add(new Role("kakine", "Kakine Teitoku",
+            "§8⬛ Kakine Teitoku §8(Level 5 N°2)",
+            "Dark Matter — matière noire qui écrase tout.",
+            Role.RoleType.ESPER, new DarkMatterPower(),
+            "N°2 ? Ces chiffres ne signifient rien — ma Dark Matter détruit tout."));
+
+        availableRoles.add(new Role("takitsubo", "Takitsubo Rikou",
+            "§5🎯 Takitsubo Rikou §8(AIM Stalker)",
+            "Traque et vole l'AIM field des Espers.",
+            Role.RoleType.ESPER, new AIMStalkerPower(),
+            "Je peux sentir ton AIM field... et te l'arracher."));
+
+        availableRoles.add(new Role("fiamma", "Fiamma of the Right",
+            "§e✝ Fiamma of the Right §8(La Droite Sacrée)",
+            "La droite qui dépasse Dieu — pouvoir ultime.",
+            Role.RoleType.MAGICIAN, new HolyRightPower(),
+            "Ma droite transcende le divin. Rien ne peut l'arrêter."));
+
+        availableRoles.add(new Role("terra", "Terra of the Left",
+            "§6⚖ Terra of the Left §8(Magicien)",
+            "Precedence — impose sa priorité sur l'ennemi.",
+            Role.RoleType.MAGICIAN, new PrecedencePower(),
+            "Le Precedence signifie que ma magie prime sur la tienne. Toujours."));
+
         plugin.getLogger().info("[RoleManager] " + availableRoles.size() + " rôles enregistrés.");
     }
 
