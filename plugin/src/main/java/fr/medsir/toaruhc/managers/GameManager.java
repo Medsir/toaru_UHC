@@ -14,6 +14,8 @@ public class GameManager {
     private final Map<UUID, UHCPlayer> players = new HashMap<>();
     private BukkitTask countdownTask, pvpTask, borderTask;
     private final int miningDuration, borderSize, borderFinalSize, borderShrinkDuration, minPlayers, maxAim, maxMana;
+    private boolean testing = false;
+    private long phaseEndTime = -1;
 
     public GameManager(ToaruUHC plugin) {
         this.plugin = plugin;
@@ -28,6 +30,7 @@ public class GameManager {
 
     public void startGame(boolean testing) {
         if (state != GameState.WAITING) return;
+        this.testing = testing;
         for (Player p : Bukkit.getOnlinePlayers())
             players.put(p.getUniqueId(), new UHCPlayer(p.getUniqueId(), maxAim, maxMana));
         if (players.size() < 2 && !testing) {
@@ -35,21 +38,24 @@ public class GameManager {
             players.clear(); return;
         }
         state = GameState.STARTING;
-        broadcastPrefix("§aPartie dans §e10s §a! §7(" + players.size() + " joueurs)");
+        broadcastPrefix("§aPartie dans §e10s §a! §7(" + players.size() + " joueurs)" + (testing ? " §8[TEST]" : ""));
         plugin.getRoleManager().distributeRoles(new ArrayList<>(players.values()));
         players.values().forEach(plugin.getPowerManager()::createEnergyBar);
         for (World w : Bukkit.getWorlds()) w.setGameRule(GameRule.NATURAL_REGENERATION, false);
+        int effectiveMining = testing ? 1 : miningDuration;
         startCountdown(10, () -> {
             state = GameState.MINING;
+            phaseEndTime = System.currentTimeMillis() + effectiveMining * 60L * 1000L;
             setupBorder(); setPvP(false);
             plugin.getPowerManager().startRegen(players);
-            broadcastTitle("§a§lLA PARTIE COMMENCE", "§7PvP dans " + miningDuration + " min", 10, 80, 20);
-            pvpTask = plugin.getServer().getScheduler().runTaskLater(plugin, this::enablePvP, 20L * 60 * miningDuration);
+            broadcastTitle("§a§lLA PARTIE COMMENCE", "§7PvP dans " + effectiveMining + " min", 10, 80, 20);
+            pvpTask = plugin.getServer().getScheduler().runTaskLater(plugin, this::enablePvP, 20L * 60 * effectiveMining);
         });
     }
 
     private void enablePvP() {
         state = GameState.PVP; setPvP(true);
+        phaseEndTime = System.currentTimeMillis() + 5L * 60 * 1000;
         broadcastTitle("§c§l⚔ PvP ACTIVÉ", "§7Que le meilleur survive !", 10, 80, 20);
         for (Player p : Bukkit.getOnlinePlayers()) p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 0.5f, 1.5f);
         borderTask = plugin.getServer().getScheduler().runTaskLater(plugin, this::startBorderShrink, 20L * 60 * 5);
@@ -57,6 +63,7 @@ public class GameManager {
 
     private void startBorderShrink() {
         state = GameState.ENDGAME;
+        phaseEndTime = System.currentTimeMillis() + borderShrinkDuration * 60L * 1000L;
         broadcastPrefix("§6⚠ La bordure rétrécit !");
         for (World w : Bukkit.getWorlds()) w.getWorldBorder().setSize(borderFinalSize, 60L * borderShrinkDuration);
     }
@@ -91,6 +98,7 @@ public class GameManager {
 
     private void reset() {
         players.clear(); state = GameState.WAITING;
+        phaseEndTime = -1; testing = false;
         for (World w : Bukkit.getWorlds()) { w.setGameRule(GameRule.NATURAL_REGENERATION, true); w.getWorldBorder().setSize(borderSize); }
         setPvP(true);
     }
@@ -114,8 +122,14 @@ public class GameManager {
     public void broadcastPrefix(String msg) { Bukkit.broadcastMessage(plugin.getConfig().getString("messages.prefix", "§8[§bAcademy City§8] §r") + msg); }
     public void broadcastTitle(String t, String s, int i, int st, int o) { for (Player p : Bukkit.getOnlinePlayers()) p.sendTitle(t, s, i, st, o); }
 
+    public long getRemainingPhaseSeconds() {
+        if (phaseEndTime <= 0) return -1;
+        return Math.max(0, (phaseEndTime - System.currentTimeMillis()) / 1000);
+    }
+
     public GameState getState()              { return state; }
     public boolean isRunning()               { return state != GameState.WAITING && state != GameState.FINISHED; }
+    public boolean isTesting()               { return testing; }
     public Map<UUID, UHCPlayer> getPlayers() { return Collections.unmodifiableMap(players); }
     public UHCPlayer getUHCPlayer(UUID uuid) { return players.get(uuid); }
     public UHCPlayer getUHCPlayer(Player p)  { return players.get(p.getUniqueId()); }

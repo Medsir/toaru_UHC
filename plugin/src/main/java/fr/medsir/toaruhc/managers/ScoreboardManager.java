@@ -40,6 +40,7 @@ public class ScoreboardManager {
 
     // Couleurs des phases
     private static final Map<GameState, String> PHASE_LABELS = new HashMap<>();
+    private static final Map<GameState, String> NEXT_PHASE_LABELS = new HashMap<>();
     static {
         PHASE_LABELS.put(GameState.WAITING,  "§7En attente...");
         PHASE_LABELS.put(GameState.STARTING, "§eDémarrage...");
@@ -47,6 +48,11 @@ public class ScoreboardManager {
         PHASE_LABELS.put(GameState.PVP,      "§c⚔ PvP");
         PHASE_LABELS.put(GameState.ENDGAME,  "§6🔥 Finale");
         PHASE_LABELS.put(GameState.FINISHED, "§dTerminée");
+        PHASE_LABELS.put(GameState.TEST,     "§7🧪 Test");
+
+        NEXT_PHASE_LABELS.put(GameState.MINING,  "→ PvP");
+        NEXT_PHASE_LABELS.put(GameState.PVP,     "→ Bordure");
+        NEXT_PHASE_LABELS.put(GameState.ENDGAME, "→ Fin");
     }
 
     public ScoreboardManager(ToaruUHC plugin) {
@@ -100,6 +106,16 @@ public class ScoreboardManager {
         // Phase
         setLine(board, obj, "§7Phase :", line--);
         setLine(board, obj, PHASE_LABELS.getOrDefault(state, "§7?"), line--);
+
+        // Compte à rebours avant la prochaine phase
+        long remaining = plugin.getGameManager().getRemainingPhaseSeconds();
+        String nextLabel = NEXT_PHASE_LABELS.get(state);
+        if (remaining >= 0 && nextLabel != null) {
+            long mins = remaining / 60;
+            long secs = remaining % 60;
+            String timeColor = remaining < 60 ? "§c" : (remaining < 300 ? "§e" : "§a");
+            setLine(board, obj, "§7" + nextLabel + " : " + timeColor + String.format("%d:%02d", mins, secs), line--);
+        }
 
         // Séparateur
         setLine(board, obj, "§f§2", line--);
