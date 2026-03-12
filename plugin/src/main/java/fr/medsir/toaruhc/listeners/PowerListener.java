@@ -3,6 +3,7 @@ package fr.medsir.toaruhc.listeners;
 import fr.medsir.toaruhc.ToaruUHC;
 import fr.medsir.toaruhc.models.UHCPlayer;
 import fr.medsir.toaruhc.powers.Power;
+import fr.medsir.toaruhc.powers.esper.AcceleratorPower;
 import fr.medsir.toaruhc.powers.esper.ImagineBreaker;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -102,6 +103,14 @@ public class PowerListener implements Listener {
         UHCPlayer uA = plugin.getGameManager().getUHCPlayer(attacker);
         UHCPlayer uV = plugin.getGameManager().getUHCPlayer(victim);
         if (uA == null || uV == null) return;
+
+        // Accelerator : réflexion des dégâts (priorité sur ImagineBreaker)
+        if (uV.hasAcceleratorMode()) {
+            event.setCancelled(true);
+            uV.setAcceleratorMode(false);
+            AcceleratorPower.reflect(victim, attacker, event.getDamage());
+            return;
+        }
 
         if (uA.hasImagineBreaker()) {
             uA.setImagineBreaker(false);

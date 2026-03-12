@@ -4,7 +4,7 @@ import fr.medsir.toaruhc.ToaruUHC;
 import fr.medsir.toaruhc.listeners.PowerListener;
 import fr.medsir.toaruhc.models.UHCPlayer;
 import fr.medsir.toaruhc.powers.esper.*;
-import fr.medsir.toaruhc.powers.magician.SaintPower;
+import fr.medsir.toaruhc.powers.magician.*;
 import fr.medsir.toaruhc.roles.Role;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -45,9 +45,47 @@ public class RoleManager {
 
         availableRoles.add(new Role("kanzaki", "Kanzaki Kaori",
             "§6⚔ Kanzaki Kaori §8(Saint)",
-            "L'une des rares Saintes.",
+            "L'une des rares Saintes au monde.",
             Role.RoleType.MAGICIAN, new SaintPower(),
             "1/7 000 000 000 — je suis une Sainte."));
+
+        // ── Nouveaux personnages ─────────────────────────────────────────────
+
+        availableRoles.add(new Role("accelerator", "Accelerator",
+            "§f☣ Accelerator §8(Level 5 N°1)",
+            "Le plus puissant Esper d'Academy City. Réfléchit tout vecteur.",
+            Role.RoleType.ESPER, new AcceleratorPower(),
+            "Je n'ai besoin d'aucune raison pour tuer. J'ai juste besoin d'une raison pour ne pas le faire."));
+
+        availableRoles.add(new Role("mugino", "Mugino Shizuri",
+            "§c🔴 Mugino Shizuri §8(Level 5 N°4)",
+            "Meltdowner — destructrice de plasma.",
+            Role.RoleType.ESPER, new MeltdownerPower(),
+            "N°4, c'est tout ce que j'aurai jamais. Et ça suffit pour te détruire."));
+
+        availableRoles.add(new Role("gunha", "Sogiita Gunha",
+            "§6💥 Sogiita Gunha §8(Level 5 N°7)",
+            "Guts indomptable — l'explosion de l'esprit.",
+            Role.RoleType.ESPER, new GutsPower(),
+            "Il y a des choses qui ne peuvent être défaites, et des choses qui ne peuvent être perdues !"));
+
+        availableRoles.add(new Role("stiyl", "Stiyl Magnus",
+            "§c🔥 Stiyl Magnus §8(Magicien)",
+            "Invocateur de runes de feu. Maître d'Innocentius.",
+            Role.RoleType.MAGICIAN, new FlameRunePower(),
+            "Innocentius — le démon de feu ne peut être tué que par les flammes elles-mêmes."));
+
+        availableRoles.add(new Role("tsuchimikado", "Tsuchimikado Motoharu",
+            "§8🌑 Tsuchimikado Motoharu §8(Magicien)",
+            "Onmyoudou — la magie au prix du sang.",
+            Role.RoleType.MAGICIAN, new OnmyoudouPower(),
+            "L'Onmyoudou me tue à chaque fois. Mais je recommencerai quand même."));
+
+        availableRoles.add(new Role("index", "Index",
+            "§e📖 Index §8(103 000 Grimoires)",
+            "La bibliothèque vivante — 103 000 grimoires mémorisés.",
+            Role.RoleType.MAGICIAN, new GrimoirePower(),
+            "Je n'ai pas de super pouvoirs, mais j'ai 103 000 livres de magie !"));
 
         plugin.getLogger().info("[RoleManager] " + availableRoles.size() + " rôles enregistrés.");
     }
