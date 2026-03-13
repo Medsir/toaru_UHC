@@ -111,6 +111,66 @@ public class RoleManager {
             Role.RoleType.MAGICIAN, new PrecedencePower(),
             "Le Precedence signifie que ma magie prime sur la tienne. Toujours."));
 
+        availableRoles.add(new Role("sherry", "Sherry Cromwell",
+            "§8🗿 Sherry Cromwell §8(Magicienne)",
+            "Invocatrice d'Ellis, le Golem.",
+            Role.RoleType.MAGICIAN, new SherryCromwellPower(),
+            "Ellis, deviens leur terreur."));
+
+        availableRoles.add(new Role("carissa", "Carissa",
+            "§6⚔ Carissa §8(Curtana Original)",
+            "La princesse qui tranche la réalité.",
+            Role.RoleType.MAGICIAN, new CarissaPower(),
+            "La lame de la princesse coupe même les anges."));
+
+        availableRoles.add(new Role("thor", "Thor",
+            "§e⚡ Thor §8(Gremlin)",
+            "Le dieu du tonnerre de Gremlin.",
+            Role.RoleType.MAGICIAN, new ThorPower(),
+            "Je ne suis pas le Thor du mythe — je suis bien pire."));
+
+        availableRoles.add(new Role("kamisato", "Kamisato Kakeru",
+            "§b✋ Kamisato Kakeru §8(World Rejector)",
+            "Sa main droite rejette ce qui n'appartient pas au monde.",
+            Role.RoleType.ESPER, new KamisatoPower(),
+            "World Rejector — toi, tu n'appartiens pas à ce monde."));
+
+        availableRoles.add(new Role("hamazura", "Hamazura Shiage",
+            "§7🔧 Hamazura Shiage §8(Level 0 / ITEM)",
+            "Un Level 0 avec un exosquelette militaire.",
+            Role.RoleType.ESPER, new HamazuraPower(),
+            "Je suis Level 0. Et je vais te battre quand même."));
+
+        availableRoles.add(new Role("acqua", "Acqua of the Back",
+            "§9💧 Acqua of the Back §8(Saint / Droite de Dieu)",
+            "Un des plus puissants Saints. Eau sainte et force brute.",
+            Role.RoleType.MAGICIAN, new AcquaPower(),
+            "Ma lance est une requête. Ma puissance est une prière."));
+
+        availableRoles.add(new Role("othinus", "Othinus",
+            "§5✦ Othinus §8(Magic God)",
+            "La Déesse de la Magie. 50/50 — trouvez Gungnir.",
+            Role.RoleType.MAGICIAN, new OthinusPower(),
+            "Je peux recréer le monde. Ça ne me rend pas heureuse."));
+
+        availableRoles.add(new Role("kinuhata", "Kinuhata Saiai",
+            "§b🛡 Kinuhata Saiai §8(Level 4 - Offense Armor)",
+            "Armor d'azote liquide. Absorbe tout.",
+            Role.RoleType.ESPER, new KinuhataPower(),
+            "Mon Offense Armor ? Il super-absorbe même tes gros pouvoirs."));
+
+        availableRoles.add(new Role("orsola", "Orsola Aquinas",
+            "§a📖 Orsola Aquinas §8(Magicienne)",
+            "Déchiffre tous les pouvoirs. Révèle les secrets.",
+            Role.RoleType.MAGICIAN, new OrsolaPower(),
+            "Le Book of Law n'a aucun secret pour moi."));
+
+        availableRoles.add(new Role("frenda", "Frenda Seivelun",
+            "§e💣 Frenda Seivelun §8(ITEM n°4)",
+            "Mines invisibles. Clic=poser, Sneak+clic=détoner.",
+            Role.RoleType.ESPER, new FrendaPower(),
+            "Tu peux pas voir mes mines ? C'est fait exprès."));
+
         plugin.getLogger().info("[RoleManager] " + availableRoles.size() + " rôles enregistrés.");
     }
 

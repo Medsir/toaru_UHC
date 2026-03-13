@@ -6,6 +6,7 @@ import fr.medsir.toaruhc.models.UHCPlayer;
 import fr.medsir.toaruhc.powers.Power;
 import fr.medsir.toaruhc.powers.esper.AcceleratorPower;
 import fr.medsir.toaruhc.powers.esper.ImagineBreaker;
+import fr.medsir.toaruhc.powers.esper.OthinusPower;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.*;
@@ -88,7 +89,7 @@ public class PowerListener implements Listener {
     }
 
     /**
-     * Empêche de dropper l'item de pouvoir.
+     * Empêche de dropper l'item de pouvoir ET Gungnir.
      */
     @EventHandler
     public void onItemDrop(PlayerDropItemEvent event) {
@@ -97,11 +98,17 @@ public class PowerListener implements Listener {
         ItemStack item = event.getItemDrop().getItemStack();
         if (item.getType() == POWER_ITEM && isPowerItem(item)) {
             event.setCancelled(true);
+            return;
+        }
+        // Empêcher de dropper Gungnir
+        if (OthinusPower.isGungnir(item)) {
+            event.setCancelled(true);
         }
     }
 
     /**
-     * Imagine Breaker : si actif et que le joueur frappe quelqu'un → nullification.
+     * Accelerator : réflexion de TOUTES les attaques reçues (sans désactiver le mode).
+     * Imagine Breaker : nullification au contact.
      */
     @EventHandler
     public void onEntityDamage(EntityDamageByEntityEvent event) {
@@ -114,9 +121,10 @@ public class PowerListener implements Listener {
         if (uA == null || uV == null) return;
 
         // Accelerator : réflexion des dégâts (priorité sur ImagineBreaker)
+        // NE PAS désactiver acceleratorMode — le garder actif jusqu'à expiration
         if (uV.hasAcceleratorMode()) {
             event.setCancelled(true);
-            uV.setAcceleratorMode(false);
+            // uV.setAcceleratorMode(false); -- RETIRÉ : mode reste actif pendant 5s entières
             AcceleratorPower.reflect(victim, attacker, event.getDamage());
             return;
         }
@@ -124,10 +132,14 @@ public class PowerListener implements Listener {
         if (uA.hasImagineBreaker()) {
             uA.setImagineBreaker(false);
             ImagineBreaker.applyNullification(attacker, victim);
+            // Forcer aussi le cooldown du pouvoir de la victime
+            if (uV.getPower() != null) uV.setCooldown(uV.getPower().getId(), 15);
         }
         if (uV.hasImagineBreaker()) {
             uV.setImagineBreaker(false);
             ImagineBreaker.applyNullification(victim, attacker);
+            // Forcer aussi le cooldown du pouvoir de l'attaquant
+            if (uA.getPower() != null) uA.setCooldown(uA.getPower().getId(), 15);
         }
     }
 

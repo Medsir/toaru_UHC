@@ -3,6 +3,7 @@ package fr.medsir.toaruhc.managers;
 import fr.medsir.toaruhc.ToaruUHC;
 import fr.medsir.toaruhc.core.GameState;
 import fr.medsir.toaruhc.models.UHCPlayer;
+import fr.medsir.toaruhc.powers.esper.OthinusPower;
 import fr.medsir.toaruhc.roles.Role;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
@@ -52,6 +53,8 @@ public class GameManager {
             players.clear(); return;
         }
         state = GameState.STARTING;
+        // Faire apparaître le coffre Gungnir pour Othinus
+        OthinusPower.spawnGungnirChest(Bukkit.getWorlds().get(0));
         broadcastPrefix("§aPartie dans §e10s §a! §7(" + players.size() + " joueurs)"
                 + (testing ? " §8[TEST]" : ""));
         plugin.getRoleManager().distributeRoles(new ArrayList<>(players.values()), roleName);
