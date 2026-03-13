@@ -171,6 +171,42 @@ public class RoleManager {
             Role.RoleType.ESPER, new FrendaPower(),
             "Tu peux pas voir mes mines ? C'est fait exprès."));
 
+        availableRoles.add(new Role("misaki", "Misaki Shokuhou",
+            "§d🧠 Mental Out §7(Misaki Shokuhou)",
+            "Contrôle mental — Level 5 N°5.",
+            Role.RoleType.ESPER, new MentalOutPower(),
+            "Tous les esprits me sont ouverts. Le tien aussi."));
+
+        availableRoles.add(new Role("awaki", "Musujime Awaki",
+            "§9📦 Move Point §7(Musujime Awaki)",
+            "Téléporte 3 ennemis en l'air — backlash sur soi.",
+            Role.RoleType.ESPER, new MovePointPower(),
+            "Move Point — je déplace n'importe quoi, n'importe où."));
+
+        availableRoles.add(new Role("birdway", "Birdway Leivinia",
+            "§e⭐ Dawn-Colored §7(Birdway Leivinia)",
+            "Pentagramme explosif — 5 nœuds en chaîne.",
+            Role.RoleType.MAGICIAN, new BirdwayPower(),
+            "Le Dawn-Colored Sunlight n'a pas besoin de symboles. Je suis le symbole."));
+
+        availableRoles.add(new Role("sasha", "Sasha Kreutzev",
+            "§f👼 Gabriel §7(Sasha Kreutzev)",
+            "Pluie divine — 3 éclairs par ennemi dans 20 blocs.",
+            Role.RoleType.MAGICIAN, new SashaPower(),
+            "Gabriel est en moi. Et il châtie."));
+
+        availableRoles.add(new Role("agnese", "Agnese Sanctis",
+            "§6🪷 Lotus Wand §7(Agnese Sanctis)",
+            "Rayon 30 blocs — 18 dmg, vole effets, force cooldown.",
+            Role.RoleType.MAGICIAN, new AgnesePower(),
+            "Le Lotus Wand punit les hérétiques. Et tout le monde l'est."));
+
+        availableRoles.add(new Role("lidvia", "Lidvia Lorenzetti",
+            "§f✝ Croce di Pietro §7(Lidvia Lorenzetti)",
+            "Zone maudite 30 blocs — malédictions & dégâts 15s.",
+            Role.RoleType.MAGICIAN, new LidviaPower(),
+            "La Croce di Pietro convertit le monde entier. De gré ou de force."));
+
         plugin.getLogger().info("[RoleManager] " + availableRoles.size() + " rôles enregistrés.");
     }
 
