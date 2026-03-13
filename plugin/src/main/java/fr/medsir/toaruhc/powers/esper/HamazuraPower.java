@@ -4,22 +4,29 @@ import fr.medsir.toaruhc.ToaruUHC;
 import fr.medsir.toaruhc.models.UHCPlayer;
 import fr.medsir.toaruhc.powers.Power;
 import org.bukkit.*;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.*;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.util.Vector;
 
 /**
- * 🔧 ITEM EXOSQUELETTE - Hamazura Shiage
- * Level 0 avec exosquelette militaire — Resistance + Strength + Speed + Absorption 12s.
+ * DSYSTEM MACHINE PISTOL - Hamazura Shiage
+ * Level 0 avec le pistolet D.S.ESPER — rafale de 5 balles.
+ * Chaque balle force le cooldown du pouvoir ennemi + Weakness + Slowness.
  */
 public class HamazuraPower extends Power {
 
-    private static final int DURATION_TICKS = 240; // 12 secondes
+    private static final int    SHOTS            = 5;
+    private static final double SHOT_DAMAGE      = 4.0;
+    private static final double SHOT_RANGE       = 20.0;
+    private static final double SHOT_STEP        = 0.5;
+    private static final double HIT_RADIUS       = 0.8;
+    private static final int    DSYSTEM_COOLDOWN = 8; // secondes forcées sur la cible
 
     public HamazuraPower() {
-        super("item_exoskeleton", "§7🔧 ITEM System §7(Hamazura Shiage)",
-              "Exosquelette opérationnel — Resistance + Force pendant 12s.",
-              PowerType.ESPER, 20, 35);
+        super("hamazura", "§6DSYSTEM §7(Hamazura Shiage)",
+              "Mitraille 5 balles — force cooldown ennemi + ralentit.",
+              PowerType.ESPER, 20, 10);
         setCustomModelId(19);
     }
 
@@ -29,54 +36,63 @@ public class HamazuraPower extends Power {
         Player player = uhcPlayer.getBukkitPlayer();
         consumeResources(uhcPlayer);
 
-        World world = player.getWorld();
-        Location loc = player.getLocation();
+        // Self buffs
+        player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 120, 2));
+        player.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 120, 0));
 
-        // Sons d'équipement
-        world.playSound(loc, Sound.BLOCK_ANVIL_PLACE,         1.0f, 1.0f);
-        world.playSound(loc, Sound.ITEM_ARMOR_EQUIP_DIAMOND,  1.0f, 1.2f);
-        world.playSound(loc, Sound.ITEM_ARMOR_EQUIP_DIAMOND,  0.8f, 0.9f);
-        world.playSound(loc, Sound.ENTITY_PLAYER_LEVELUP,     0.6f, 1.5f);
+        player.sendMessage("§6DSYSTEM §7— Rafale de 5 balles !");
+        player.sendTitle("§6D.S.ESPER", "§7Tire !", 3, 20, 5);
+        player.getWorld().playSound(player.getLocation(), Sound.ITEM_CROSSBOW_SHOOT, 1.5f, 1.8f);
 
-        // Particules en cercle (étincelles métalliques)
-        for (double angle = 0; angle < Math.PI * 2; angle += Math.PI / 8) {
-            double rx = Math.cos(angle) * 0.8;
-            double rz = Math.sin(angle) * 0.8;
-            world.spawnParticle(Particle.CRIT, loc.clone().add(rx, 0.5, rz),
-                    3, 0.05, 0.1, 0.05, 0.05);
+        for (int i = 0; i < SHOTS; i++) {
+            final int shotNum = i;
+            ToaruUHC.getInstance().getServer().getScheduler().runTaskLater(
+                    ToaruUHC.getInstance(), () -> fireShot(player, uhcPlayer, shotNum), i * 2L);
         }
-        // Fumée de démarrage des servos
-        for (int h = 0; h <= 3; h++) {
-            world.spawnParticle(Particle.SMOKE_LARGE, loc.clone().add(0, h * 0.5, 0),
-                    4, 0.3, 0.1, 0.3, 0.02);
-        }
-        // Circuits électriques
-        world.spawnParticle(Particle.ELECTRIC_SPARK, loc.clone().add(0, 1, 0),
-                30, 0.5, 0.7, 0.5, 0.06);
-
-        // Effets actifs
-        player.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, DURATION_TICKS, 1)); // Resistance II
-        player.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE,   DURATION_TICKS, 1)); // Strength II
-        player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED,             DURATION_TICKS, 0)); // Speed I
-        player.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION,        DURATION_TICKS, 1)); // Absorption II (4 coeurs)
-
-        player.sendMessage("§7🔧 §bExosquelette ITEM §7activé — Resistance II + Strength II + Speed I + Absorption !");
-        player.sendTitle("§7🔧 EXOSQUELETTE ACTIF", "§7Resistance + Force + Speed — 12s", 5, 50, 15);
-
-        // À expiration
-        final Player finalPlayer = player;
-        ToaruUHC.getInstance().getServer().getScheduler().runTaskLater(
-            ToaruUHC.getInstance(), () -> {
-                if (finalPlayer.isOnline()) {
-                    finalPlayer.sendMessage("§7🔧 Exosquelette désactivé.");
-                    finalPlayer.getWorld().playSound(finalPlayer.getLocation(),
-                            Sound.BLOCK_ANVIL_DESTROY, 0.8f, 0.7f);
-                    finalPlayer.getWorld().spawnParticle(Particle.SMOKE_NORMAL,
-                            finalPlayer.getLocation().add(0, 1, 0), 20, 0.4, 0.5, 0.4, 0.03);
-                }
-            }, DURATION_TICKS
-        );
-
         return true;
+    }
+
+    private void fireShot(Player player, UHCPlayer uhcPlayer, int shotNum) {
+        if (!player.isOnline()) return;
+        World world = player.getWorld();
+        Location start = player.getEyeLocation();
+        Vector dir = player.getLocation().getDirection().normalize();
+        // Légère dispersion
+        dir.add(new Vector((Math.random()-0.5)*0.1, 0, (Math.random()-0.5)*0.1)).normalize();
+
+        Location cur = start.clone();
+        double dist = 0;
+        world.playSound(start, Sound.ENTITY_ARROW_SHOOT, 0.6f, 1.8f);
+
+        while (dist < SHOT_RANGE) {
+            cur.add(dir.clone().multiply(SHOT_STEP));
+            dist += SHOT_STEP;
+            world.spawnParticle(Particle.CRIT_MAGIC, cur, 1, 0.02, 0.02, 0.02, 0.0);
+
+            if (cur.getBlock().getType().isSolid()) {
+                world.spawnParticle(Particle.SMOKE_NORMAL, cur, 5, 0.1, 0.1, 0.1, 0.02);
+                break;
+            }
+
+            for (Entity entity : world.getNearbyEntities(cur, HIT_RADIUS, HIT_RADIUS, HIT_RADIUS)) {
+                if (!(entity instanceof Player target)) continue;
+                if (target.equals(player)) continue;
+                UHCPlayer uTarget = ToaruUHC.getInstance().getGameManager().getUHCPlayer(target);
+                if (uTarget == null || !uTarget.isAlive()) continue;
+
+                target.damage(SHOT_DAMAGE, player);
+                target.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 40, 1));
+                target.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 40, 1));
+                // Forcer le cooldown du pouvoir de la cible
+                if (uTarget.getPower() != null) {
+                    uTarget.setCooldown(uTarget.getPower().getId(), DSYSTEM_COOLDOWN);
+                }
+                world.spawnParticle(Particle.CRIT, target.getLocation().add(0,1,0), 12, 0.3,0.4,0.3,0.04);
+                world.playSound(target.getLocation(), Sound.ENTITY_PLAYER_HURT, 0.8f, 1.2f);
+                player.sendMessage("§6DSYSTEM §7— Touche §6" + target.getName() + " §7(balle " + (shotNum+1) + "/5)");
+                target.sendTitle("§6DSYSTEM", "§7Touché !", 2, 12, 3);
+                return; // une cible par balle
+            }
+        }
     }
 }

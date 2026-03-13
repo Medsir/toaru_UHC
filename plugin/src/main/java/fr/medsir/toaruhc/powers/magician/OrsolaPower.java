@@ -7,6 +7,7 @@ import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.scheduler.BukkitRunnable;
 
 /**
  * 📖 DÉCHIFFREMENT SACRÉ - Orsola Aquinas
@@ -91,6 +92,63 @@ public class OrsolaPower extends Power {
                 if (player.isOnline()) player.sendMessage("§7📖 Déchiffrement expiré — Glowing désactivé.");
             }, GLOW_DURATION);
 
+        // Tracking du joueur le plus proche pendant 8 secondes
+        Player nearest = findNearestPlayer(player);
+        if (nearest != null) {
+            UHCPlayer uNearest = ToaruUHC.getInstance().getGameManager().getUHCPlayer(nearest);
+            final int[] remaining = {8};
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    if (!player.isOnline() || remaining[0] <= 0) { cancel(); return; }
+                    Player tracked = nearest; // re-get live location
+                    // Check still alive
+                    UHCPlayer uTracked = ToaruUHC.getInstance().getGameManager().getUHCPlayer(tracked);
+                    if (uTracked == null || !uTracked.isAlive()) { cancel(); return; }
+
+                    String roleName = uTracked.getRole() != null ? uTracked.getRole().getDisplayName() : "?";
+                    String powName  = uTracked.getPower() != null ? uTracked.getPower().getName() : "?";
+                    String dir = compassDir(player.getLocation(), tracked.getLocation());
+                    int dist = (int) player.getLocation().distance(tracked.getLocation());
+
+                    player.sendActionBar("§a📖 §f" + tracked.getName() + " §8[" + roleName + "§8]"
+                            + " §7" + dir + " §8@ §f" + dist + "m | §7" + powName + " §8| §e" + remaining[0] + "s");
+                    remaining[0]--;
+                }
+            }.runTaskTimer(ToaruUHC.getInstance(), 0L, 20L);
+        }
+
         return true;
+    }
+
+    private Player findNearestPlayer(Player orsola) {
+        Player best = null;
+        double bestDist = Double.MAX_VALUE;
+        for (UHCPlayer u : ToaruUHC.getInstance().getGameManager().getPlayers().values()) {
+            if (!u.isAlive()) continue;
+            Player other = u.getBukkitPlayer();
+            if (other == null || !other.isOnline() || other.equals(orsola)) continue;
+            double d = other.getLocation().distance(orsola.getLocation());
+            if (d < bestDist) { bestDist = d; best = other; }
+        }
+        return best;
+    }
+
+    private String compassDir(Location from, Location to) {
+        double dx = to.getX() - from.getX();
+        double dz = to.getZ() - from.getZ();
+        double angle = Math.toDegrees(Math.atan2(dz, dx));
+        // Convert: Minecraft Z+ = South, X+ = East
+        // atan2(dz, dx): 0=East, 90=South, -90=North, 180/-180=West
+        if (angle < 0) angle += 360;
+        // Map to 8 directions
+        if (angle < 22.5 || angle >= 337.5) return "§7→ E";
+        if (angle < 67.5)  return "§7↘ SE";
+        if (angle < 112.5) return "§7↓ S";
+        if (angle < 157.5) return "§7↙ SO";
+        if (angle < 202.5) return "§7← O";
+        if (angle < 247.5) return "§7↖ NO";
+        if (angle < 292.5) return "§7↑ N";
+        return "§7↗ NE";
     }
 }

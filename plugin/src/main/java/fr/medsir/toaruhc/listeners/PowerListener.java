@@ -6,9 +6,11 @@ import fr.medsir.toaruhc.models.UHCPlayer;
 import fr.medsir.toaruhc.powers.Power;
 import fr.medsir.toaruhc.powers.esper.AcceleratorPower;
 import fr.medsir.toaruhc.powers.esper.ImagineBreaker;
+import fr.medsir.toaruhc.powers.esper.KinuhataPower;
 import fr.medsir.toaruhc.powers.esper.OthinusPower;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.*;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -16,6 +18,7 @@ import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.projectiles.ProjectileSource;
 
 public class PowerListener implements Listener {
 
@@ -107,39 +110,56 @@ public class PowerListener implements Listener {
     }
 
     /**
-     * Accelerator : réflexion de TOUTES les attaques reçues (sans désactiver le mode).
+     * Accelerator : réflexion des attaques physiques et projectiles.
+     * Kinuhata : contre-attaque azote sur les attaquants.
      * Imagine Breaker : nullification au contact.
      */
-    @EventHandler
-    public void onEntityDamage(EntityDamageByEntityEvent event) {
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
         if (!plugin.getGameManager().isRunning()) return;
-        if (!(event.getDamager() instanceof Player attacker)) return;
-        if (!(event.getEntity()  instanceof Player victim))   return;
+        if (!(event.getEntity() instanceof Player victim)) return;
+        UHCPlayer uVictim = plugin.getGameManager().getUHCPlayer(victim);
+        if (uVictim == null || !uVictim.isAlive()) return;
 
-        UHCPlayer uA = plugin.getGameManager().getUHCPlayer(attacker);
-        UHCPlayer uV = plugin.getGameManager().getUHCPlayer(victim);
-        if (uA == null || uV == null) return;
-
-        // Accelerator : réflexion des dégâts (priorité sur ImagineBreaker)
-        // NE PAS désactiver acceleratorMode — le garder actif jusqu'à expiration
-        if (uV.hasAcceleratorMode()) {
+        // ACCELERATOR — reflect projectiles
+        if (uVictim.hasAcceleratorMode() && event.getDamager() instanceof Projectile proj) {
             event.setCancelled(true);
-            // uV.setAcceleratorMode(false); -- RETIRÉ : mode reste actif pendant 5s entières
+            proj.remove();
+            ProjectileSource src = proj.getShooter();
+            if (src instanceof Player shooter && !shooter.equals(victim)) {
+                AcceleratorPower.reflectProjectile(victim, shooter, event.getDamage());
+            }
+            return;
+        }
+
+        // ACCELERATOR — reflect physical attacks from players
+        if (uVictim.hasAcceleratorMode() && event.getDamager() instanceof Player attacker) {
+            event.setCancelled(true);
             AcceleratorPower.reflect(victim, attacker, event.getDamage());
             return;
         }
 
-        if (uA.hasImagineBreaker()) {
-            uA.setImagineBreaker(false);
-            ImagineBreaker.applyNullification(attacker, victim);
-            // Forcer aussi le cooldown du pouvoir de la victime
-            if (uV.getPower() != null) uV.setCooldown(uV.getPower().getId(), 15);
+        // KINUHATA nitrogen armor counter
+        if (uVictim.isNitrogenArmorActive() && event.getDamager() instanceof Player attacker) {
+            // Does NOT cancel damage — just counter-effect the attacker
+            KinuhataPower.nitrogenCounter(victim, attacker);
         }
-        if (uV.hasImagineBreaker()) {
-            uV.setImagineBreaker(false);
-            ImagineBreaker.applyNullification(victim, attacker);
-            // Forcer aussi le cooldown du pouvoir de l'attaquant
-            if (uA.getPower() != null) uA.setCooldown(uA.getPower().getId(), 15);
+
+        // IMAGINE BREAKER logic (Player-vs-Player only)
+        if (event.getDamager() instanceof Player attacker) {
+            UHCPlayer uA = plugin.getGameManager().getUHCPlayer(attacker);
+            if (uA == null) return;
+
+            if (uA.hasImagineBreaker()) {
+                uA.setImagineBreaker(false);
+                ImagineBreaker.applyNullification(attacker, victim);
+                if (uVictim.getPower() != null) uVictim.setCooldown(uVictim.getPower().getId(), 15);
+            }
+            if (uVictim.hasImagineBreaker()) {
+                uVictim.setImagineBreaker(false);
+                ImagineBreaker.applyNullification(victim, attacker);
+                if (uA.getPower() != null) uA.setCooldown(uA.getPower().getId(), 15);
+            }
         }
     }
 

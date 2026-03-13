@@ -14,133 +14,168 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * 🔴 MELTDOWNER - Mugino Shizuri (Level 5 N°4)
- * Faisceau de plasma continu pendant 3 secondes (60 ticks).
- * Direction recalculée à chaque tick selon le regard du joueur.
- * Dégâts par tick hit: 3.0 + Wither I 2s + knockback léger.
- * Chaque cible ne peut être touchée que toutes les 10 ticks.
+ * MELTDOWNER - Mugino Shizuri (Level 5 N°4)
+ * TOGGLE : clic droit = lance le beam, re-clic = l'arrête.
+ * AIM drainé progressivement : DRAIN_BASE/s + DRAIN_INCREMENT par seconde (8, 11, 14...)
+ * Plus tu maintiens, plus ça draine. Cooldown appliqué uniquement à l'arrêt.
+ * Les dégâts augmentent aussi au fil du temps (beam qui chauffe).
  */
 public class MeltdownerPower extends Power {
 
-    private static final double DAMAGE_PER_HIT = 3.0;
-    private static final double MAX_DISTANCE   = 50.0;
-    private static final double STEP           = 0.75;
-    private static final double HIT_RADIUS     = 1.5;
-    private static final int    BEAM_DURATION  = 60;  // 3 secondes
-    private static final int    HIT_COOLDOWN   = 10;  // ticks entre hits sur la même cible
+    private static final double DAMAGE_BASE     = 3.0;   // dégâts de base par hit
+    private static final double MAX_DISTANCE    = 50.0;
+    private static final double STEP            = 0.75;
+    private static final double HIT_RADIUS      = 1.5;
+    private static final int    HIT_COOLDOWN    = 10;    // ticks entre deux hits sur la même cible
+    private static final int    DRAIN_BASE      = 8;     // AIM drainé à la 1ère seconde
+    private static final int    DRAIN_INCREMENT = 3;     // +AIM par seconde supplémentaire
+    private static final int    STOP_COOLDOWN   = 20;    // secondes de cooldown après arrêt
 
     public MeltdownerPower() {
         super("meltdowner", "§c🔴 Meltdowner §7(Mugino Shizuri)",
-              "Faisceau plasma 3s continu — Wither I + knockback par hit.",
-              PowerType.ESPER, 40, 20);
+              "TOGGLE — re-clic pour arrêter. Drain AIM croissant. Dégâts augmentent.",
+              PowerType.ESPER, 0, 0); // coût/cooldown gérés manuellement
         setCustomModelId(4);
     }
 
     @Override
     public boolean activate(UHCPlayer uhcPlayer) {
-        if (!canUse(uhcPlayer)) return false;
         Player player = uhcPlayer.getBukkitPlayer();
-        consumeResources(uhcPlayer);
+        if (player == null || !player.isOnline()) return false;
 
+        // Mode actif → arrêter
+        if (uhcPlayer.isMeltdownerActive()) {
+            stopBeam(uhcPlayer, player);
+            return true;
+        }
+
+        // Vérifier cooldown et AIM minimum
+        if (uhcPlayer.isOnCooldown("meltdowner")) {
+            player.sendMessage("§cMeltdowner en recharge ! ("
+                    + uhcPlayer.getRemainingCooldown("meltdowner") + "s)");
+            return false;
+        }
+        if (uhcPlayer.getAim() < DRAIN_BASE) {
+            player.sendMessage("§cPas assez d'AIM ! (" + uhcPlayer.getAim() + "/" + DRAIN_BASE + ")");
+            return false;
+        }
+
+        // Démarrage du beam
         uhcPlayer.setMeltdownerActive(true);
-
         World world = player.getWorld();
         world.playSound(player.getLocation(), Sound.ENTITY_WARDEN_SONIC_BOOM, 0.8f, 0.6f);
         world.playSound(player.getLocation(), Sound.ENTITY_BLAZE_SHOOT, 1.5f, 0.5f);
-        player.sendMessage("§c🔴 §bMeltdowner §c— Feu ! §7(3 secondes)");
-        player.sendTitle("§c🔴 MELTDOWNER", "§7Faisceau plasma actif — 3s", 5, 40, 10);
+        player.sendMessage("§c🔴 §bMeltdowner §c— Feu ! §7(Re-clic pour arrêter — drain AIM croissant !)");
+        player.sendTitle("§c🔴 MELTDOWNER", "§7Faisceau plasma actif", 5, 20, 5);
 
-        // Suivi du cooldown par cible : UUID -> dernier tick touché
         final Map<UUID, Integer> lastHitTick = new HashMap<>();
 
         new BukkitRunnable() {
-            int tick = 0;
+            int tick      = 0;
+            int seconds   = 0;    // secondes complètes écoulées
+            int nextDrain = 20;   // prochain tick où on draine l'AIM
 
             @Override
             public void run() {
                 if (!player.isOnline() || !uhcPlayer.isMeltdownerActive()) {
-                    uhcPlayer.setMeltdownerActive(false);
-                    cancel(); return;
-                }
-                if (tick >= BEAM_DURATION) {
-                    uhcPlayer.setMeltdownerActive(false);
-                    if (player.isOnline()) {
-                        player.sendMessage("§7🔴 Meltdowner expiré.");
-                        player.getWorld().spawnParticle(Particle.SMOKE_NORMAL,
-                                player.getLocation().add(0, 1, 0), 15, 0.3, 0.4, 0.3, 0.02);
-                    }
-                    cancel(); return;
+                    cancel();
+                    return;
                 }
 
-                // Direction recalculée chaque tick selon le regard du joueur
+                // Drain AIM chaque seconde (montant croissant)
+                if (tick >= nextDrain) {
+                    int drain = DRAIN_BASE + seconds * DRAIN_INCREMENT;
+                    if (uhcPlayer.getAim() < drain) {
+                        player.sendMessage("§c🔴 §7Plus d'AIM — Meltdowner s'éteint automatiquement.");
+                        stopBeam(uhcPlayer, player);
+                        cancel();
+                        return;
+                    }
+                    uhcPlayer.setAim(uhcPlayer.getAim() - drain);
+                    ToaruUHC.getInstance().getPowerManager().updateEnergyBar(uhcPlayer);
+                    seconds++;
+                    nextDrain += 20;
+                    // Indicateur ActionBar du drain
+                    int nextDrain2 = DRAIN_BASE + seconds * DRAIN_INCREMENT;
+                    player.sendActionBar("§c🔴 §f" + seconds + "s §7— AIM drain §c" + drain
+                            + "§7/s §8→ §c" + nextDrain2 + "/s");
+                }
+
+                // Tracer le beam
                 Location start = player.getEyeLocation();
-                Vector dir = player.getLocation().getDirection().normalize();
-                Location current = start.clone();
-                double dist = 0;
+                Vector   dir   = player.getLocation().getDirection().normalize();
+                Location cur   = start.clone();
+                double   dist  = 0;
 
                 while (dist < MAX_DISTANCE) {
-                    current.add(dir.clone().multiply(STEP));
+                    cur.add(dir.clone().multiply(STEP));
                     dist += STEP;
-                    World w = current.getWorld();
+                    World w = cur.getWorld();
 
-                    // Effets visuels style Warden beam
-                    w.spawnParticle(Particle.FLAME,      current, 3, 0.05, 0.05, 0.05, 0.02);
-                    w.spawnParticle(Particle.CRIT_MAGIC,  current, 2, 0.07, 0.07, 0.07, 0.0);
-                    if ((int)(dist / STEP) % 3 == 0) {
-                        w.spawnParticle(Particle.SCULK_SOUL, current, 1, 0.05, 0.05, 0.05, 0.0);
-                    }
-                    if ((int)(dist / STEP) % 5 == 0) {
-                        w.spawnParticle(Particle.SONIC_BOOM, current, 1, 0.0, 0.0, 0.0, 0.0);
-                    }
+                    // Particules (plus intenses avec le temps)
+                    int extra = Math.min(seconds, 6);
+                    w.spawnParticle(Particle.FLAME,      cur, 3 + extra, 0.05, 0.05, 0.05, 0.02);
+                    w.spawnParticle(Particle.CRIT_MAGIC, cur, 2,         0.07, 0.07, 0.07, 0.00);
+                    if ((int)(dist / STEP) % 3 == 0)
+                        w.spawnParticle(Particle.SCULK_SOUL, cur, 1, 0.05, 0.05, 0.05, 0.0);
+                    if ((int)(dist / STEP) % 5 == 0)
+                        w.spawnParticle(Particle.SONIC_BOOM, cur, 1, 0.0, 0.0, 0.0, 0.0);
 
-                    // Détection entités (hitbox large)
-                    for (Entity entity : w.getNearbyEntities(current, HIT_RADIUS, HIT_RADIUS, HIT_RADIUS)) {
+                    // Détection entités
+                    for (Entity entity : w.getNearbyEntities(cur, HIT_RADIUS, HIT_RADIUS, HIT_RADIUS)) {
                         if (!(entity instanceof Player target)) continue;
                         if (target.equals(player)) continue;
-
-                        UHCPlayer uTarget = ToaruUHC.getInstance().getGameManager().getUHCPlayer(target);
+                        UHCPlayer uTarget = ToaruUHC.getInstance().getGameManager()
+                                .getUHCPlayer(target);
                         if (uTarget == null || !uTarget.isAlive()) continue;
 
-                        // Vérifier cooldown de hit sur cette cible
                         Integer lastHit = lastHitTick.get(target.getUniqueId());
                         if (lastHit != null && (tick - lastHit) < HIT_COOLDOWN) continue;
-
                         lastHitTick.put(target.getUniqueId(), tick);
 
-                        target.damage(DAMAGE_PER_HIT, player);
-                        target.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 40, 0)); // 2s Wither I
+                        double dmg = DAMAGE_BASE + seconds * 0.5; // dégâts croissants
+                        target.damage(dmg, player);
+                        target.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 40, 0));
 
-                        // Knockback léger vers l'arrière
                         Vector kb = dir.clone().multiply(0.8).add(new Vector(0, 0.3, 0));
                         target.setVelocity(target.getVelocity().add(kb));
 
                         w.spawnParticle(Particle.FLAME, target.getLocation().add(0, 1, 0),
-                                30, 0.4, 0.6, 0.4, 0.08);
+                                30 + extra * 5, 0.4, 0.6, 0.4, 0.08);
                         w.spawnParticle(Particle.CRIT,  target.getLocation().add(0, 1, 0),
                                 20, 0.3, 0.4, 0.3, 0.05);
-                        w.playSound(target.getLocation(), Sound.ENTITY_WARDEN_ATTACK_IMPACT, 0.8f, 0.7f);
+                        w.playSound(target.getLocation(), Sound.ENTITY_WARDEN_ATTACK_IMPACT,
+                                0.8f, 0.7f);
 
-                        player.sendMessage("§c🔴 §fMeltdowner touche §c" + target.getName()
-                                + "§f — Withering !");
-                        target.sendMessage("§cMeltdowner de §b" + player.getName()
-                                + " §c— Wither + Knockback !");
-                        target.sendTitle("§c🔴 PLASMA", "§7Withering...", 5, 20, 5);
-
-                        // Ne pas arrêter le faisceau — continuer sur 3s entières
+                        player.sendMessage("§c🔴 §fTouche §c" + target.getName()
+                                + " §f(§c" + String.format("%.1f", dmg) + " dmg§f) !");
+                        target.sendTitle("§c🔴 PLASMA", "§7Withering...", 2, 15, 3);
                     }
 
-                    // Collision mur
-                    if (current.getBlock().getType().isSolid()) {
-                        w.createExplosion(current.clone(), 0f, false, false);
-                        w.spawnParticle(Particle.FLAME, current, 15, 0.2, 0.2, 0.2, 0.03);
-                        break; // Arrêter ce tick à ce bloc, mais continuer les autres ticks
+                    // Collision bloc
+                    if (cur.getBlock().getType().isSolid()) {
+                        w.spawnParticle(Particle.FLAME, cur, 10, 0.2, 0.2, 0.2, 0.03);
+                        break;
                     }
                 }
-
                 tick++;
             }
         }.runTaskTimer(ToaruUHC.getInstance(), 0L, 1L);
 
         return true;
+    }
+
+    /** Arrête le beam et applique le cooldown. */
+    private void stopBeam(UHCPlayer uhcPlayer, Player player) {
+        uhcPlayer.setMeltdownerActive(false);
+        uhcPlayer.setCooldown("meltdowner", STOP_COOLDOWN);
+        if (player.isOnline()) {
+            player.sendMessage("§7🔴 Meltdowner arrêté — Recharge §e" + STOP_COOLDOWN + "s§7.");
+            player.sendActionBar("§7🔴 Arrêté — Recharge " + STOP_COOLDOWN + "s");
+            player.getWorld().spawnParticle(Particle.SMOKE_NORMAL,
+                    player.getLocation().add(0, 1, 0), 15, 0.3, 0.4, 0.3, 0.02);
+            player.getWorld().playSound(player.getLocation(),
+                    Sound.BLOCK_FIRE_EXTINGUISH, 0.7f, 1.2f);
+        }
     }
 }

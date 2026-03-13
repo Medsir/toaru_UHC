@@ -7,6 +7,8 @@ import fr.medsir.toaruhc.powers.esper.OthinusPower;
 import fr.medsir.toaruhc.roles.Role;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import java.util.*;
@@ -126,6 +128,14 @@ public class GameManager {
                     broadcastTitle("§a§l GO !", "§fBonne chance, Academy City !", 5, 40, 10);
                     for (Player p : Bukkit.getOnlinePlayers())
                         p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.2f, 1.5f);
+                    // 10 secondes d'invincibilité au lancement
+                    for (UHCPlayer u : players.values()) {
+                        Player p = u.getBukkitPlayer();
+                        if (p != null && p.isOnline()) {
+                            p.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 200, 255, false, false));
+                            p.sendMessage("§a🛡 §7Invincibilité §e10s §7active au lancement !");
+                        }
+                    }
                     onDone.run();
                     return;
                 }

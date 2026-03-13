@@ -16,10 +16,11 @@ public class UHCPlayer {
     private final Map<String, Long> cooldowns = new HashMap<>();
     private int kills = 0;
     private boolean alive = true;
-    private boolean imagineBreaker   = false;
-    private boolean acceleratorMode  = false;
-    private boolean meltdownerActive = false;
-    private boolean thorMode         = false;
+    private boolean imagineBreaker      = false;
+    private boolean acceleratorMode     = false;
+    private boolean meltdownerActive    = false;
+    private boolean thorMode            = false;
+    private boolean nitrogenArmorActive = false;
 
     public UHCPlayer(UUID uuid, int maxAim, int maxMana) {
         this.uuid = uuid; this.maxAim = maxAim; this.maxMana = maxMana;
@@ -71,5 +72,7 @@ public class UHCPlayer {
     public void setMeltdownerActive(boolean v) { this.meltdownerActive = v; }
     public boolean isThorMode() { return thorMode; }
     public void setThorMode(boolean v) { this.thorMode = v; }
+    public boolean isNitrogenArmorActive() { return nitrogenArmorActive; }
+    public void setNitrogenArmorActive(boolean v) { this.nitrogenArmorActive = v; }
     public void addKill() { this.kills++; }
 }
