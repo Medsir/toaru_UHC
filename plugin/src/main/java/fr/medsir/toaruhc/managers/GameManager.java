@@ -41,8 +41,10 @@ public class GameManager {
         startGame(testing, null);
     }
 
-
-    public void startGame(boolean testing, String roleName) {
+    public void startGame(boolean testing, String roleName1){
+        startGame(testing, roleName1, null);
+    }
+    public void startGame(boolean testing, String roleName, String roleName2) {
         if (state != GameState.WAITING) return;
         setPvP(false); // Désactiver le PvP dès le lancement
         this.testing = testing;
@@ -57,10 +59,12 @@ public class GameManager {
         OthinusPower.spawnGungnirChest(Bukkit.getWorlds().get(0));
         broadcastPrefix("§aPartie dans §e10s §a! §7(" + players.size() + " joueurs)"
                 + (testing ? " §8[TEST]" : ""));
-        plugin.getRoleManager().distributeRoles(new ArrayList<>(players.values()), roleName);
+        if (roleName2 != null) {plugin.getRoleManager().distributeRoles(new ArrayList<>(players.values()), roleName, roleName2);}
+        else{plugin.getRoleManager().distributeRoles(new ArrayList<>(players.values()), roleName);}
+
         players.values().forEach(plugin.getPowerManager()::createEnergyBar);
         for (World w : Bukkit.getWorlds()) w.setGameRule(GameRule.NATURAL_REGENERATION, false);
-        int effectiveMining = testing ? 1 : miningDuration;
+        int effectiveMining = testing ? 0 : miningDuration;
         startCountdown(10, () -> {
             setupBorder();
             setPvP(false);

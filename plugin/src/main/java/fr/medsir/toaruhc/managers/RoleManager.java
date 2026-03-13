@@ -174,6 +174,13 @@ public class RoleManager {
         plugin.getLogger().info("[RoleManager] " + availableRoles.size() + " rôles enregistrés.");
     }
 
+    public void distributeRoles(List<UHCPlayer> players, String roleName1, String roleName2){
+        if(players.size() > 1){
+            assignRole(players.get(0), getRole(roleName1));
+            assignRole(players.get(1), getRole(roleName2));
+        }
+    }
+
     public void distributeRoles(List<UHCPlayer> players, String roleName){
         //Pour le test : donne un rôle précis a tous les joueurs
         if(roleName == null){
