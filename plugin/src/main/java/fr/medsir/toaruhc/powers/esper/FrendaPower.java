@@ -41,12 +41,6 @@ public class FrendaPower extends Power {
         Player player = uhcPlayer.getBukkitPlayer();
         if (player == null || !player.isOnline()) return false;
 
-        // Mode détonation (sneak) — ne pas vérifier cooldown
-        if (player.isSneaking()) {
-            detonateAll(player);
-            return true;
-        }
-
         // Mode pose — vérifier cooldown et ressources
         if (!canUse(uhcPlayer)) return false;
         consumeResources(uhcPlayer);
@@ -77,9 +71,17 @@ public class FrendaPower extends Power {
 
     @Override
     public boolean activateUltimate(UHCPlayer uhcPlayer) {
-        if (!canUseUltimate(uhcPlayer)) return false;
         Player player = uhcPlayer.getBukkitPlayer();
         if (player == null) return false;
+
+        // Si des mines existent → faire la détonation normale (Shift sert à détoner)
+        List<Location> mines = MINES.getOrDefault(player.getUniqueId(), new ArrayList<>());
+        if (!mines.isEmpty()) {
+            detonateAll(player);
+            return true;
+        }
+
+        if (!canUseUltimate(uhcPlayer)) return false;
 
         showUltimateIntro(player, "LAST RESORT ARSENAL", "Toutes les mines x3 + 5 grenades — BOOM !");
         consumeUltimateResources(uhcPlayer);
@@ -89,9 +91,9 @@ public class FrendaPower extends Power {
 
         // Step 1: Detonate all mines at 3x power
         UUID uuid = player.getUniqueId();
-        List<Location> mines = MINES.remove(uuid);
-        if (mines != null && !mines.isEmpty()) {
-            for (Location mineLoc : mines) {
+        List<Location> existingMines = MINES.remove(uuid);
+        if (existingMines != null && !existingMines.isEmpty()) {
+            for (Location mineLoc : existingMines) {
                 world.createExplosion(mineLoc, 6.0f, false, true, player);
                 world.spawnParticle(Particle.EXPLOSION_HUGE, mineLoc, 5, 0.3, 0.3, 0.3, 0.0);
                 world.playSound(mineLoc, Sound.ENTITY_GENERIC_EXPLODE, 1.5f, 0.7f);

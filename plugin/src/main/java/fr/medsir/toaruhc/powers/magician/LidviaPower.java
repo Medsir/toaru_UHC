@@ -139,6 +139,13 @@ public class LidviaPower extends Power {
         Player lidvia = uhcPlayer.getBukkitPlayer();
         if (lidvia == null) return false;
 
+        // World Cross uniquement la nuit
+        if (lidvia.getWorld().isDayTime()) {
+            lidvia.sendMessage("§f✝ §7Croix du Monde — §cUniquement utilisable la nuit !");
+            lidvia.sendMessage("§f✝ §8(Attends minuit, Lidvia...)");
+            return false;
+        }
+
         showUltimateIntro(lidvia, "WORLD CROSS", "La Croix du Monde — toute la carte est maudite 20s !");
         consumeUltimateResources(uhcPlayer);
 

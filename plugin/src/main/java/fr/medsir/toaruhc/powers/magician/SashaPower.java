@@ -40,6 +40,9 @@ public class SashaPower extends Power {
 
         World world = sasha.getWorld();
 
+        // Protection Sasha contre ses propres éclairs
+        sasha.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, BOLT_DELAY * BOLTS + 20, 255, false, false));
+
         // Buff de Sasha
         sasha.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE,  BUFF_TICKS, 1));
         sasha.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, BUFF_TICKS, 0));
@@ -119,6 +122,9 @@ public class SashaPower extends Power {
 
         showUltimateIntro(sasha, "GABRIEL'S FULL MANIFESTATION", "L'Archange Gabriel en personne !");
         consumeUltimateResources(uhcPlayer);
+
+        // Protection divine pendant la manifestation
+        sasha.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 110, 255, false, false));
 
         for (Player p : Bukkit.getOnlinePlayers())
             p.sendMessage("§f👼 §fGabriel §7se manifeste à travers §fSasha §7— Châtiment total dans 40 blocs !");

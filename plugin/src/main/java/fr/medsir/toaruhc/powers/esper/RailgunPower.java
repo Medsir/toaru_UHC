@@ -53,94 +53,110 @@ public class RailgunPower extends Power {
         Player player = uhcPlayer.getBukkitPlayer();
         if (player == null) return false;
 
-        showUltimateIntro(player, "RAILGUN MAX OUTPUT", "Pièce au maximum — traverse la carte !");
+        showUltimateIntro(player, "RAILGUN MAX OUTPUT", "Pièce à puissance maximale — traverse la carte !");
         consumeUltimateResources(uhcPlayer);
 
         World world = player.getWorld();
-        Bukkit.broadcastMessage("§e⚡ §fMisaka §7tire §eRAILGUN MAX OUTPUT §7— Pièce à puissance maximale !");
+        Bukkit.broadcastMessage("§e⚡ §fMisaka §7tire §eRAILGUN MAX OUTPUT §7— La carte tremble !");
 
-        // Sounds
-        world.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 2.0f, 1.0f);
-        world.playSound(player.getLocation(), Sound.ITEM_CROSSBOW_SHOOT, 2.0f, 1.0f);
-        world.playSound(player.getLocation(), Sound.ENTITY_WARDEN_SONIC_BOOM, 1.0f, 0.8f);
+        // Sons dramatiques
+        world.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 2.0f, 0.5f);
+        world.playSound(player.getLocation(), Sound.ENTITY_WARDEN_SONIC_BOOM, 1.5f, 1.5f);
+        world.playSound(player.getLocation(), Sound.ITEM_CROSSBOW_SHOOT, 2.0f, 2.0f);
 
-        // Fire massive railgun raycast
+        // Invincibilité brève (0.5s) pendant le tir
+        player.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 10, 255, false, false));
+
         Location start = player.getEyeLocation();
-        Vector direction = player.getLocation().getDirection().normalize();
-        final double ULT_STEP = 0.3;
-        final double ULT_MAX = 300.0;
+        Vector dir = player.getLocation().getDirection().normalize();
 
-        new BukkitRunnable() {
-            final Location cur = start.clone();
+        new org.bukkit.scheduler.BukkitRunnable() {
+            final double STEP      = 0.4;
+            final double MAX_RANGE = 300.0;
+            final double HIT_RADIUS = 1.5;
             double dist = 0;
-            int stepCount = 0;
+            Location cur = start.clone();
 
             @Override
             public void run() {
-                if (!player.isOnline()) { cancel(); return; }
+                // Avancer par lots de 15 steps par tick pour aller vite
+                for (int s = 0; s < 15; s++) {
+                    if (dist >= MAX_RANGE) { applyConstraint(player, uhcPlayer); cancel(); return; }
 
-                // Process multiple steps per tick for speed
-                for (int i = 0; i < 12; i++) {
-                    if (dist >= ULT_MAX) { cancel(); return; }
+                    cur.add(dir.clone().multiply(STEP));
+                    dist += STEP;
 
-                    cur.add(direction.clone().multiply(ULT_STEP));
-                    dist += ULT_STEP;
-                    stepCount++;
+                    int step = (int)(dist / STEP);
 
-                    World w = cur.getWorld();
+                    // Particules continues
+                    world.spawnParticle(Particle.CRIT_MAGIC,     cur, 2, 0.05, 0.05, 0.05, 0.0);
+                    world.spawnParticle(Particle.END_ROD,        cur, 1, 0.02, 0.02, 0.02, 0.0);
+                    world.spawnParticle(Particle.FIREWORKS_SPARK, cur, 1, 0.03, 0.03, 0.03, 0.0);
+                    world.spawnParticle(Particle.FLAME,          cur, 2, 0.1,  0.1,  0.1,  0.02);
 
-                    // Particles every step
-                    w.spawnParticle(Particle.CRIT_MAGIC, cur, 3, 0.05, 0.05, 0.05, 0.02);
-                    w.spawnParticle(Particle.END_ROD, cur, 1, 0.02, 0.02, 0.02, 0.0);
-                    w.spawnParticle(Particle.FIREWORKS_SPARK, cur, 1, 0.05, 0.05, 0.05, 0.0);
-
-                    // Terrain shake every 30 steps
-                    if (stepCount % 30 == 0) {
-                        w.createExplosion(cur.clone(), 1.5f, false, false);
+                    // Éclair cosmétique tous les 10 steps
+                    if (step % 10 == 0) {
+                        world.strikeLightningEffect(cur.clone());
+                        world.playSound(cur, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.3f, 1.5f);
                     }
 
-                    // Block collision
+                    // Explosion + feu + destruction de blocs tous les 25 steps
+                    if (step % 25 == 0) {
+                        world.createExplosion(cur.clone(), 2.0f, true, true, player);
+                        world.spawnParticle(Particle.EXPLOSION_LARGE, cur, 3, 0.3, 0.3, 0.3, 0.0);
+                    }
+
+                    // Détruire les blocs dans un rayon de 2 autour du chemin
+                    if (step % 5 == 0) {
+                        for (int dx = -2; dx <= 2; dx++) {
+                            for (int dy = -2; dy <= 2; dy++) {
+                                for (int dz = -2; dz <= 2; dz++) {
+                                    if (dx*dx + dy*dy + dz*dz > 4) continue;
+                                    org.bukkit.block.Block b = cur.clone().add(dx,dy,dz).getBlock();
+                                    if (b.getType() != Material.AIR && b.getType() != Material.BEDROCK)
+                                        b.setType(Material.AIR);
+                                }
+                            }
+                        }
+                    }
+
+                    // Blocage (après destruction possible)
                     if (cur.getBlock().getType().isSolid()) {
-                        w.spawnParticle(Particle.EXPLOSION_LARGE, cur, 5, 0.3, 0.3, 0.3, 0.0);
+                        world.createExplosion(cur.clone(), 3.0f, true, true, player);
+                        world.spawnParticle(Particle.EXPLOSION_HUGE, cur, 5, 0.4, 0.4, 0.4, 0.0);
+                        applyConstraint(player, uhcPlayer);
                         cancel();
                         return;
                     }
 
-                    // Hit detection
-                    for (Entity entity : w.getNearbyEntities(cur, 1.2, 1.2, 1.2)) {
+                    // Détection ennemis
+                    for (org.bukkit.entity.Entity entity : world.getNearbyEntities(cur, HIT_RADIUS, HIT_RADIUS, HIT_RADIUS)) {
                         if (!(entity instanceof Player target)) continue;
                         if (target.equals(player)) continue;
-                        UHCPlayer uTarget = ToaruUHC.getInstance().getGameManager().getUHCPlayer(target);
+                        fr.medsir.toaruhc.models.UHCPlayer uTarget = ToaruUHC.getInstance().getGameManager().getUHCPlayer(target);
                         if (uTarget == null || !uTarget.isAlive()) continue;
 
-                        // Massive damage
                         target.damage(40.0, player);
-
-                        // Horizontal knockback in beam direction
-                        Vector kb = direction.clone().setY(0).normalize().multiply(2.5);
+                        Vector kb = dir.clone().multiply(2.5);
                         target.setVelocity(target.getVelocity().add(kb));
-
-                        w.strikeLightning(target.getLocation());
-                        w.spawnParticle(Particle.EXPLOSION_HUGE, target.getLocation(), 5, 0.3, 0.3, 0.3, 0.0);
+                        world.strikeLightning(target.getLocation()); // dégâts éclair sur l'ennemi
+                        world.spawnParticle(Particle.EXPLOSION_HUGE, target.getLocation().add(0,1,0), 6, 0.4,0.6,0.4,0.0);
                         target.sendTitle("§e⚡ RAILGUN", "§cPièce à pleine puissance !", 3, 30, 5);
                         player.sendMessage("§e⚡ §7Railgun — Touche §f" + target.getName() + " §c(40 dmg)");
-                        // Do NOT stop — railgun pierces through
+                        // Le railgun perce — on n'arrête pas
                     }
                 }
             }
-        }.runTaskTimer(ToaruUHC.getInstance(), 0L, 1L);
 
-        // CONSTRAINT: applied after beam fired (schedule 1 tick later to ensure it fires after initial setup)
-        ToaruUHC.getInstance().getServer().getScheduler().runTaskLater(ToaruUHC.getInstance(), () -> {
-            if (!player.isOnline()) return;
-            uhcPlayer.setAim(0);
-            ToaruUHC.getInstance().getPowerManager().updateEnergyBar(uhcPlayer);
-            uhcPlayer.setCooldown("railgun", 30);
-            player.damage(8.0);
-            player.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 200, 2));
-            player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 100, 0));
-            player.sendMessage("§e⚡ §7Railgun Max Output — §c-8 HP§7, AIM vidé, Weakness III 10s, Blindness 5s");
-        }, 2L);
+            private void applyConstraint(Player player, UHCPlayer uhcPlayer) {
+                uhcPlayer.setAim(0);
+                ToaruUHC.getInstance().getPowerManager().updateEnergyBar(uhcPlayer);
+                uhcPlayer.setCooldown("railgun", 30);
+                player.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 200, 2));
+                player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 200, 2));
+                player.sendMessage("§e⚡ §7Railgun Max Output — AIM vidé, Weakness III + Slowness III 10s");
+            }
+        }.runTaskTimer(ToaruUHC.getInstance(), 0L, 1L);
 
         return true;
     }

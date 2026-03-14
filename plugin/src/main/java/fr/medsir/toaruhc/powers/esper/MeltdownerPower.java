@@ -242,7 +242,6 @@ public class MeltdownerPower extends Power {
         ToaruUHC.getInstance().getPowerManager().updateEnergyBar(uhcPlayer);
         player.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 600, 3));  // Weakness IV 30s
         player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 400, 2));      // Slowness III 20s
-        player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 100, 0)); // Blindness 5s
         uhcPlayer.setCooldown("meltdowner", 45);
         player.sendMessage("§c🔴 §7Cross Meltdown — §c-10 HP§7, AIM vidé, Weakness IV 30s, Slowness III 20s");
 

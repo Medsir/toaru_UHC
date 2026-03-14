@@ -145,6 +145,8 @@ public class KinuhataPower extends Power {
         // After 100 ticks (5s): detonate frozen enemies
         ToaruUHC.getInstance().getServer().getScheduler().runTaskLater(
                 ToaruUHC.getInstance(), () -> {
+                    // Invincibilité pour ne pas prendre ses propres explosions
+                    player.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 60, 255, false, false));
                     for (Player target : frozenTargets) {
                         if (!target.isOnline()) continue;
                         UHCPlayer uTarget = ToaruUHC.getInstance().getGameManager().getUHCPlayer(target);

@@ -90,6 +90,7 @@ public class BirdwayPower extends Power {
 
     private void triggerExplosions(Player leivinia, World world, List<Location> nodes) {
         world.playSound(leivinia.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 0.5f, 1.5f);
+        leivinia.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 30, 255, false, false)); // ADD THIS
         for (int i = 0; i < nodes.size(); i++) {
             final Location nodeLoc = nodes.get(i);
             final int idx = i;
@@ -151,6 +152,8 @@ public class BirdwayPower extends Power {
                         enemy.setVelocity(pull);
                     }
 
+                    // Birdway ne prend pas ses propres explosions
+                    leivinia.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 60, 255, false, false));
                     // Toutes les explosions simultanément
                     for (Location nodeLoc : nodes) {
                         world.createExplosion(nodeLoc, 5.0f, true, true, leivinia);
