@@ -8,6 +8,10 @@ import org.bukkit.entity.*;
 import org.bukkit.potion.*;
 import org.bukkit.util.Vector;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
 /**
  * 🌑 ONMYOUDOU - Tsuchimikado Motoharu
  * Lance une malédiction sur le joueur ennemi dans la ligne de mire (20 blocs).
@@ -25,6 +29,8 @@ public class OnmyoudouPower extends Power {
               "Maudit un ennemi en vue — Slowness + Cécité + Nausée. Retour de dégâts.",
               PowerType.MAGICIAN, 30, 20);
         setCustomModelId(9);
+        this.ultimateCost = 0;
+        this.ultimateCooldownSeconds = 180;
     }
 
     @Override
@@ -70,6 +76,51 @@ public class OnmyoudouPower extends Power {
         target.sendMessage("§8🌑 §cMalédiction de §b" + player.getName()
                 + " §c— Slowness + Cécité + Nausée 5s !");
         target.sendTitle("§8🌑 MAUDIT", "§7Onmyoudou de Tsuchimikado...", 5, 60, 15);
+
+        return true;
+    }
+
+    @Override
+    public boolean activateUltimate(UHCPlayer uhcPlayer) {
+        if (!canUseUltimate(uhcPlayer)) return false;
+        Player player = uhcPlayer.getBukkitPlayer();
+        if (player == null) return false;
+
+        showUltimateIntro(player, "FORBIDDEN ONMYOUDOU", "Copie l'ultime d'un ennemi proche !");
+        consumeUltimateResources(uhcPlayer);
+
+        // Contrepartie immédiate (avant copie)
+        player.damage(15.0);
+        player.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 200, 2));
+        player.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 200, 0));
+        player.sendMessage("§9🌀 §7Forbidden Arts — §c-15 HP§7, Poison III + Wither I 10s");
+
+        // Trouver un ennemi aléatoire dans 30 blocs
+        List<UHCPlayer> nearby = new ArrayList<>();
+        for (UHCPlayer u : ToaruUHC.getInstance().getGameManager().getPlayers().values()) {
+            if (!u.isAlive()) continue;
+            Player other = u.getBukkitPlayer();
+            if (other == null || !other.isOnline() || other.equals(player)) continue;
+            if (other.getLocation().distance(player.getLocation()) <= 30.0)
+                nearby.add(u);
+        }
+
+        if (nearby.isEmpty()) {
+            player.sendMessage("§9🌀 §7Aucun ennemi à portée — arts interdits mais pouvoir gaspillé !");
+            return true;
+        }
+
+        UHCPlayer uTarget = nearby.get(new Random().nextInt(nearby.size()));
+        Player target = uTarget.getBukkitPlayer();
+        Power theirPower = uTarget.getPower();
+
+        if (theirPower != null) {
+            theirPower.activateUltimate(uhcPlayer);
+            for (Player p : org.bukkit.Bukkit.getOnlinePlayers())
+                p.sendMessage("§9🌀 §fTsuchimikado §7copie l'ultime de §f" + target.getName() + "§7 — Arts interdits !");
+        } else {
+            player.sendMessage("§9🌀 §7Aucun ennemi à portée — arts interdits mais pouvoir gaspillé !");
+        }
 
         return true;
     }

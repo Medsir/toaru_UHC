@@ -10,7 +10,9 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -34,6 +36,8 @@ public class AcquaPower extends Power {
               "Vague d'eau sainte — frappe massive en avant.",
               PowerType.MAGICIAN, 55, 20);
         setCustomModelId(20);
+        this.ultimateCost = 80;
+        this.ultimateCooldownSeconds = 200;
     }
 
     @Override
@@ -107,6 +111,63 @@ public class AcquaPower extends Power {
                 step++;
             }
         }.runTaskTimer(ToaruUHC.getInstance(), 0L, 2L); // 5 blocs/tick ≈ rapide
+
+        return true;
+    }
+
+    @Override
+    public boolean activateUltimate(UHCPlayer uhcPlayer) {
+        if (!canUseUltimate(uhcPlayer)) return false;
+        Player player = uhcPlayer.getBukkitPlayer();
+        if (player == null) return false;
+
+        showUltimateIntro(player, "DIVINE PUNISHMENT IMPACT", "3 vagues divines — 30 dégâts chacune !");
+        consumeUltimateResources(uhcPlayer);
+
+        for (Player p : org.bukkit.Bukkit.getOnlinePlayers())
+            p.sendMessage("§9🌊 §fAcqua §7déclenche §9DIVINE PUNISHMENT IMPACT §7— 3 vagues divines !");
+
+        World world = player.getWorld();
+        Location origin = player.getLocation();
+
+        // 3 vagues avec 40 ticks de délai entre chacune
+        for (int wave = 0; wave < 3; wave++) {
+            final int waveNum = wave;
+            ToaruUHC.getInstance().getServer().getScheduler().runTaskLater(ToaruUHC.getInstance(), () -> {
+                if (!player.isOnline()) return;
+
+                // Particules de vague (sphère de water_splash)
+                for (double angle = 0; angle < Math.PI * 2; angle += Math.PI / 16) {
+                    double rx = Math.cos(angle) * (5.0 + waveNum * 3.0);
+                    double rz = Math.sin(angle) * (5.0 + waveNum * 3.0);
+                    world.spawnParticle(Particle.WATER_SPLASH, origin.clone().add(rx, 0.5, rz),
+                            5, 0.5, 0.3, 0.5, 0.2);
+                }
+                world.playSound(origin, Sound.ENTITY_ELDER_GUARDIAN_HURT, 1.5f, 0.6f + waveNum * 0.1f);
+
+                for (UHCPlayer u : ToaruUHC.getInstance().getGameManager().getPlayers().values()) {
+                    if (!u.isAlive()) continue;
+                    Player target = u.getBukkitPlayer();
+                    if (target == null || !target.isOnline() || target.equals(player)) continue;
+                    if (target.getLocation().distance(origin) > 40.0) continue;
+
+                    target.damage(30.0, player);
+                    target.setVelocity(new Vector(
+                            (Math.random() - 0.5) * 0.5, 3.0, (Math.random() - 0.5) * 0.5));
+                    world.spawnParticle(Particle.WATER_SPLASH, target.getLocation().add(0, 1, 0),
+                            40, 1.0, 1.0, 1.0, 0.5);
+                    world.strikeLightning(target.getLocation());
+                }
+
+                // Contrainte après la 3ème vague
+                if (waveNum == 2) {
+                    player.damage(20.0);
+                    player.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 600, 3));
+                    uhcPlayer.setCooldown("saint_exorciste", 45);
+                    player.sendMessage("§9🌊 §7Divine Punishment — §c-20 HP§7, Weakness IV 30s, pouvoir désactivé 45s");
+                }
+            }, wave * 40L);
+        }
 
         return true;
     }

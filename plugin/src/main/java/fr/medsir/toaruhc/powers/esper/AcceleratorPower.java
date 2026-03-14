@@ -30,6 +30,8 @@ public class AcceleratorPower extends Power {
               "Réfléchit toutes les attaques ×1.5 pendant 5 secondes. Renvoie aussi les sorts.",
               PowerType.ESPER, 35, 15);
         setCustomModelId(1);
+        this.ultimateCost = 0;
+        this.ultimateCooldownSeconds = 180;
     }
 
     @Override
@@ -80,6 +82,83 @@ public class AcceleratorPower extends Power {
                     }
                 }
             }, DURATION_TICKS);
+
+        return true;
+    }
+
+    @Override
+    public boolean activateUltimate(UHCPlayer uhcPlayer) {
+        if (!canUseUltimate(uhcPlayer)) return false;
+        Player player = uhcPlayer.getBukkitPlayer();
+        if (player == null) return false;
+
+        showUltimateIntro(player, "VECTOR ABSOLUTE FIELD", "15s — tout est repoussé en permanence !");
+        consumeUltimateResources(uhcPlayer);
+
+        Bukkit.broadcastMessage("§b🔄 §fAccelerator §7active §bVECTOR ABSOLUTE FIELD §7— Repulsion absolue 15s !");
+
+        World world = player.getWorld();
+
+        // Resistance 255 for 15s (300 ticks)
+        player.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 300, 255, false, false));
+
+        final int[] tickCount = {0};
+
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!player.isOnline() || tickCount[0] >= 300) {
+                    // CONSTRAINT: field collapse
+                    if (player.isOnline()) {
+                        player.removePotionEffect(PotionEffectType.DAMAGE_RESISTANCE);
+                        player.damage(15.0);
+                        player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 200, 4));     // Slowness V 10s
+                        player.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 200, 2)); // Weakness III 10s
+                        uhcPlayer.setAcceleratorMode(false);
+                        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 0.7f);
+                        Bukkit.broadcastMessage("§b🔄 §fAccelerator §7s'effondre — le champ s'effondre sur lui !");
+                    }
+                    cancel();
+                    return;
+                }
+
+                World w = player.getWorld();
+                Location playerLoc = player.getLocation();
+
+                // Push all players within 25 blocks away
+                for (UHCPlayer u : ToaruUHC.getInstance().getGameManager().getPlayers().values()) {
+                    if (!u.isAlive()) continue;
+                    Player victim = u.getBukkitPlayer();
+                    if (victim == null || !victim.isOnline() || victim.equals(player)) continue;
+                    if (victim.getLocation().distance(playerLoc) > 25.0) continue;
+
+                    Vector repulsion = victim.getLocation().toVector()
+                            .subtract(playerLoc.toVector()).normalize().multiply(1.5);
+                    victim.setVelocity(repulsion);
+
+                    // Close range damage
+                    if (victim.getLocation().distance(playerLoc) <= 5.0) {
+                        victim.damage(1.0, player);
+                    }
+                }
+
+                // SONIC_BOOM sphere particles
+                for (double angle = 0; angle < Math.PI * 2; angle += Math.PI / 8) {
+                    double rx = Math.cos(angle) * 3.0;
+                    double rz = Math.sin(angle) * 3.0;
+                    w.spawnParticle(Particle.SONIC_BOOM, playerLoc.clone().add(rx, 1, rz), 1, 0.1, 0.1, 0.1, 0.0);
+                }
+                // END_ROD expanding ring
+                for (double angle = 0; angle < Math.PI * 2; angle += Math.PI / 12) {
+                    double r = 2.5 + (tickCount[0] % 20) * 0.1;
+                    double rx = Math.cos(angle) * r;
+                    double rz = Math.sin(angle) * r;
+                    w.spawnParticle(Particle.END_ROD, playerLoc.clone().add(rx, 0.5, rz), 1, 0.0, 0.0, 0.0, 0.0);
+                }
+
+                tickCount[0] += 5;
+            }
+        }.runTaskTimer(ToaruUHC.getInstance(), 0L, 5L);
 
         return true;
     }

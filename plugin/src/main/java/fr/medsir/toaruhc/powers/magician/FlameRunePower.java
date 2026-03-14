@@ -28,6 +28,8 @@ public class FlameRunePower extends Power {
               "Pose une rune de feu Innocentius qui brûle les ennemis 15s.",
               PowerType.MAGICIAN, 35, 25);
         setCustomModelId(7);
+        this.ultimateCost = 0;
+        this.ultimateCooldownSeconds = 180;
     }
 
     @Override
@@ -141,6 +143,77 @@ public class FlameRunePower extends Power {
                 }
             }
         }.runTaskTimer(ToaruUHC.getInstance(), 0L, PULSE_INTERVAL);
+
+        return true;
+    }
+
+    @Override
+    public boolean activateUltimate(UHCPlayer uhcPlayer) {
+        if (!canUseUltimate(uhcPlayer)) return false;
+        Player player = uhcPlayer.getBukkitPlayer();
+        if (player == null) return false;
+
+        if (player.getHealth() <= 4.0) {
+            player.sendMessage("§c7🔥 Pas assez de HP (min 2 coeurs) !");
+            return false;
+        }
+
+        showUltimateIntro(player, "RAGING INNOCENTIUS", "Innocentius en furie — rayon 15 !");
+        consumeUltimateResources(uhcPlayer);
+
+        for (Player p : org.bukkit.Bukkit.getOnlinePlayers())
+            p.sendMessage("§c🔥 §fStiyl §7invoque §cRAGING INNOCENTIUS §7— Fuyez le feu !");
+
+        player.damage(player.getHealth() * 0.5);
+
+        World world = player.getWorld();
+        final Location ragingLoc = player.getLocation().clone();
+
+        final int[] ticksLeft = {600};
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (ticksLeft[0] <= 0 || !player.isOnline()) {
+                    if (player.isOnline())
+                        player.sendMessage("§c🔥 §7Innocentius disparaît...");
+                    cancel();
+                    return;
+                }
+
+                int elapsed = 600 - ticksLeft[0];
+                ticksLeft[0] -= 2;
+
+                // Dégâts + feu sur les ennemis proches
+                for (UHCPlayer u : ToaruUHC.getInstance().getGameManager().getPlayers().values()) {
+                    if (!u.isAlive()) continue;
+                    Player target = u.getBukkitPlayer();
+                    if (target == null || !target.isOnline() || target.equals(player)) continue;
+                    if (target.getLocation().distance(ragingLoc) > 15.0) continue;
+
+                    target.setFireTicks(40);
+                    target.damage(3.0, player);
+                    world.spawnParticle(Particle.FLAME, target.getLocation().add(0, 1, 0), 10, 0.5, 0.7, 0.5, 0.05);
+                }
+
+                // 5 anneaux de FLAME autour du joueur (rayon 15)
+                for (int ring = 0; ring < 5; ring++) {
+                    double ringRadius = 3.0 + ring * 3.0;
+                    double ringY = ring * 0.3;
+                    double angleStep = Math.PI / (8 + ring * 4);
+                    for (double angle = 0; angle < Math.PI * 2; angle += angleStep) {
+                        double rx = Math.cos(angle + elapsed * 0.02) * ringRadius;
+                        double rz = Math.sin(angle + elapsed * 0.02) * ringRadius;
+                        world.spawnParticle(Particle.FLAME, ragingLoc.clone().add(rx, ringY + 0.1, rz),
+                                1, 0.05, 0.1, 0.05, 0.01);
+                    }
+                }
+
+                // Son toutes les 20 ticks
+                if (elapsed % 20 == 0) {
+                    world.playSound(ragingLoc, Sound.ENTITY_BLAZE_SHOOT, 1.0f, 0.6f);
+                }
+            }
+        }.runTaskTimer(ToaruUHC.getInstance(), 0L, 2L);
 
         return true;
     }

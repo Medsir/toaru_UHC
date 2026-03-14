@@ -10,6 +10,7 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -36,6 +37,8 @@ public class ThorPower extends Power {
               "Phase 1: Foudre + Mode Thor actif. Phase 2: Désactiver.",
               PowerType.MAGICIAN, 50, 25);
         setCustomModelId(17);
+        this.ultimateCost = 0;
+        this.ultimateCooldownSeconds = 180;
     }
 
     @Override
@@ -126,6 +129,78 @@ public class ThorPower extends Power {
         // Stocker la tâche pour pouvoir l'annuler
         BukkitTask old = thorTasks.put(player.getUniqueId(), task);
         if (old != null) old.cancel();
+
+        return true;
+    }
+
+    @Override
+    public boolean activateUltimate(UHCPlayer uhcPlayer) {
+        if (!canUseUltimate(uhcPlayer)) return false;
+        Player player = uhcPlayer.getBukkitPlayer();
+        if (player == null) return false;
+
+        showUltimateIntro(player, "THUNDER GOD MODE", "10s d'invincibilité + frappe chaque ennemi !");
+        consumeUltimateResources(uhcPlayer);
+
+        for (Player p : org.bukkit.Bukkit.getOnlinePlayers())
+            p.sendMessage("§e⚡ §fThor §7active §eTHUNDER GOD MODE §7— Dieu du tonnerre pendant 10s !");
+
+        // Désactiver mode thor si actif
+        if (uhcPlayer.isThorMode()) uhcPlayer.setThorMode(false);
+
+        World world = player.getWorld();
+
+        // Invincible 200 ticks
+        player.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 200, 255, false, false));
+
+        // Collecter les ennemis
+        java.util.List<Player> enemies = new ArrayList<>();
+        for (UHCPlayer u : ToaruUHC.getInstance().getGameManager().getPlayers().values()) {
+            if (!u.isAlive()) continue;
+            Player other = u.getBukkitPlayer();
+            if (other == null || !other.isOnline() || other.equals(player)) continue;
+            enemies.add(other);
+        }
+
+        // Visiter chaque ennemi avec 20 ticks de délai entre chacun
+        for (int i = 0; i < enemies.size(); i++) {
+            final Player target = enemies.get(i);
+            final long delay = i * 20L;
+            ToaruUHC.getInstance().getServer().getScheduler().runTaskLater(ToaruUHC.getInstance(), () -> {
+                if (!player.isOnline()) return;
+                UHCPlayer uTarget = ToaruUHC.getInstance().getGameManager().getUHCPlayer(target);
+                if (uTarget == null || !uTarget.isAlive() || !target.isOnline()) return;
+
+                // Téléporter Thor sur la cible
+                player.teleport(target.getLocation().clone().add(1, 0, 0));
+
+                // 3 éclairs
+                for (int j = 0; j < 3; j++)
+                    world.strikeLightning(target.getLocation());
+
+                target.damage(15.0, player);
+                world.spawnParticle(Particle.FIREWORKS_SPARK, target.getLocation().add(0, 1, 0), 30, 0.5, 0.7, 0.5, 0.1);
+                target.sendTitle("§e⚡ THUNDER GOD", "§cFrappe de Thor !", 2, 15, 3);
+                world.playSound(target.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.5f, 1.0f);
+            }, delay);
+        }
+
+        // Contrainte après 200 ticks
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!player.isOnline()) return;
+                player.removePotionEffect(PotionEffectType.DAMAGE_RESISTANCE);
+                player.damage(10.0);
+                uhcPlayer.setMana(0);
+                ToaruUHC.getInstance().getPowerManager().updateEnergyBar(uhcPlayer);
+                player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 200, 9));
+                player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 200, 9));
+                player.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 200, 9));
+                for (Player p : org.bukkit.Bukkit.getOnlinePlayers())
+                    p.sendMessage("§e⚡ §fThor §7s'effondre — décharge totale !");
+            }
+        }.runTaskLater(ToaruUHC.getInstance(), 200L);
 
         return true;
     }

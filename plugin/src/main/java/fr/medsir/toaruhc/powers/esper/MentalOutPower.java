@@ -9,7 +9,9 @@ import org.bukkit.potion.*;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 /**
  * MENTAL OUT — Misaki Shokuhou (Level 5 #5)
@@ -26,6 +28,8 @@ public class MentalOutPower extends Power {
               "Contrôle mental 5s — aveugle, force cooldown, dirige vers les ennemis.",
               PowerType.ESPER, 60, 30);
         setCustomModelId(25);
+        this.ultimateCost = 80;
+        this.ultimateCooldownSeconds = 200;
     }
 
     @Override
@@ -108,6 +112,92 @@ public class MentalOutPower extends Power {
                     }
                 }
                 ticks++;
+            }
+        }.runTaskTimer(ToaruUHC.getInstance(), 0L, 1L);
+
+        return true;
+    }
+
+    @Override
+    public boolean activateUltimate(UHCPlayer uhcPlayer) {
+        if (!canUseUltimate(uhcPlayer)) return false;
+        Player misaki = uhcPlayer.getBukkitPlayer();
+        if (misaki == null) return false;
+
+        showUltimateIntro(misaki, "FULL MENTAL DOMINATION", "Tous les ennemis sous contrôle — 8s !");
+        consumeUltimateResources(uhcPlayer);
+
+        for (Player p : Bukkit.getOnlinePlayers())
+            p.sendMessage("§d🧠 §fMisaki §7active §dFULL MENTAL DOMINATION §7— Tous sous contrôle 8s !");
+
+        // Collecter tous les ennemis
+        List<Player> controlled = new ArrayList<>();
+        for (UHCPlayer u : ToaruUHC.getInstance().getGameManager().getPlayers().values()) {
+            if (!u.isAlive()) continue;
+            Player other = u.getBukkitPlayer();
+            if (other == null || !other.isOnline() || other.equals(misaki)) continue;
+            controlled.add(other);
+        }
+
+        // Appliquer effets de contrôle sur chaque ennemi
+        for (Player enemy : controlled) {
+            enemy.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 160, 0));
+            enemy.addPotionEffect(new PotionEffect(PotionEffectType.CONFUSION, 160, 0));
+            enemy.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 160, 2));
+            // Force 60s de cooldown sur leur pouvoir
+            UHCPlayer uEnemy = ToaruUHC.getInstance().getGameManager().getUHCPlayer(enemy);
+            if (uEnemy != null && uEnemy.getPower() != null)
+                uEnemy.setCooldown(uEnemy.getPower().getId(), 60);
+        }
+
+        // Runnable toutes les 20 ticks pendant 160 ticks (8s)
+        new BukkitRunnable() {
+            int tick = 0;
+            @Override
+            public void run() {
+                if (tick >= 160) {
+                    // Contrainte
+                    if (misaki.isOnline()) {
+                        misaki.damage(10.0);
+                        misaki.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 200, 9));
+                        misaki.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 200, 9));
+                        misaki.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 100, 0));
+                        misaki.sendMessage("§d🧠 §7Full Mental Domination — §c-10 HP§7, évanouie 10s");
+                        for (Player p : Bukkit.getOnlinePlayers())
+                            p.sendMessage("§d🧠 §fMisaki §7s'évanouit après avoir contrôlé tout le monde !");
+                    }
+                    cancel();
+                    return;
+                }
+
+                if (tick % 20 == 0) {
+                    for (Player enemy : controlled) {
+                        if (!enemy.isOnline()) continue;
+                        UHCPlayer uEnemy = ToaruUHC.getInstance().getGameManager().getUHCPlayer(enemy);
+                        if (uEnemy == null || !uEnemy.isAlive()) continue;
+
+                        // Pousser vers Misaki ou vers l'ennemi le plus proche
+                        Player nearest = null;
+                        double nd = Double.MAX_VALUE;
+                        for (UHCPlayer u2 : ToaruUHC.getInstance().getGameManager().getPlayers().values()) {
+                            if (!u2.isAlive()) continue;
+                            Player other = u2.getBukkitPlayer();
+                            if (other == null || !other.isOnline() || other.equals(enemy) || other.equals(misaki)) continue;
+                            double d = other.getLocation().distance(enemy.getLocation());
+                            if (d < nd) { nd = d; nearest = other; }
+                        }
+                        Player pushTarget = nearest != null ? nearest : misaki;
+                        Vector push = pushTarget.getLocation().toVector()
+                                .subtract(enemy.getLocation().toVector())
+                                .setY(0).normalize().multiply(0.4);
+                        enemy.setVelocity(push);
+
+                        enemy.getWorld().spawnParticle(Particle.ENCHANTMENT_TABLE,
+                                enemy.getLocation().add(0, 2, 0), 8, 0.5, 0.3, 0.5, 1.5);
+                        enemy.sendActionBar("§d🧠 §7Tu es sous contrôle mental — tu n'es plus toi-même !");
+                    }
+                }
+                tick++;
             }
         }.runTaskTimer(ToaruUHC.getInstance(), 0L, 1L);
 

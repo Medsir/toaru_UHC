@@ -8,6 +8,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
+import java.util.ArrayList;
 import java.util.Collection;
 
 /**
@@ -24,6 +25,8 @@ public class ImagineBreaker extends Power {
               "AOE 6 blocs : annule effets + cooldown forcé 15s. Bouclier contact 3s.",
               PowerType.ESPER, 20, 8);
         setCustomModelId(3);
+        this.ultimateCost = 0;
+        this.ultimateCooldownSeconds = 180;
     }
 
     @Override
@@ -83,6 +86,72 @@ public class ImagineBreaker extends Power {
                     if (player.isOnline()) player.sendMessage("§7🖐 Bouclier Imagine Breaker expiré.");
                 }
             }, 60L);
+
+        return true;
+    }
+
+    @Override
+    public boolean activateUltimate(UHCPlayer uhcPlayer) {
+        if (!canUseUltimate(uhcPlayer)) return false;
+        Player player = uhcPlayer.getBukkitPlayer();
+        if (player == null) return false;
+
+        showUltimateIntro(player, "DRAGON'S STRIKE", "Le bras obscur surgit — annule toute magie !");
+        consumeUltimateResources(uhcPlayer);
+
+        World world = player.getWorld();
+        Bukkit.broadcastMessage("§0🐉 §fTouma §7déclenche §8DRAGON'S STRIKE §7— La Main des Ténèbres !");
+
+        // Sounds
+        world.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 2.0f, 1.0f);
+        world.playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f);
+
+        // Massive AOE 20-block explosion effect
+        world.createExplosion(player.getLocation(), 3.5f, false, false, player);
+        for (int i = 0; i < 20; i++) {
+            double angle = (2 * Math.PI / 20) * i;
+            double rx = Math.cos(angle) * 2.0;
+            double rz = Math.sin(angle) * 2.0;
+            world.spawnParticle(Particle.EXPLOSION_HUGE,
+                    player.getLocation().add(rx, 0.5, rz), 1, 0.1, 0.1, 0.1, 0.0);
+        }
+        world.strikeLightning(player.getLocation());
+
+        // AOE on all alive enemies within 20 blocks
+        for (UHCPlayer u : ToaruUHC.getInstance().getGameManager().getPlayers().values()) {
+            if (!u.isAlive()) continue;
+            Player target = u.getBukkitPlayer();
+            if (target == null || !target.isOnline() || target.equals(player)) continue;
+            if (target.getLocation().distance(player.getLocation()) > 20.0) continue;
+
+            target.damage(20.0, player);
+
+            // Remove ALL active potion effects
+            for (PotionEffect pe : new ArrayList<>(target.getActivePotionEffects())) {
+                target.removePotionEffect(pe.getType());
+            }
+
+            // Force 30s cooldown on their power
+            if (u.getPower() != null) {
+                u.setCooldown(u.getPower().getId(), 30);
+            }
+            // Force ult cooldown
+            if (u.getPower() != null) {
+                u.setCooldown("ult_" + u.getPower().getId(), 60);
+            }
+
+            target.sendTitle("§0🐉 DRAGON'S STRIKE", "§7Imagination annihilée...", 3, 30, 8);
+            world.spawnParticle(Particle.EXPLOSION_HUGE,
+                    target.getLocation().add(0, 1, 0), 8, 0.5, 0.7, 0.5, 0.0);
+        }
+
+        // CONSTRAINT
+        player.damage(10.0);
+        uhcPlayer.setImagineBreaker(false);
+        uhcPlayer.setCooldown("imagine_breaker", 60);
+        player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 200, 4)); // Mining Fatigue V 10s
+        player.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 200, 1));     // Weakness II
+        player.sendMessage("§8🐉 §7Dragon's Strike — §c-10 HP§7, IB brisé 60s, Mining Fatigue V 10s");
 
         return true;
     }

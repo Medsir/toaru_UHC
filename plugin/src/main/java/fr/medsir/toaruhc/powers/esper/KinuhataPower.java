@@ -10,6 +10,9 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * NITROGEN ARMOR - Kinuhata Saiai
  * Armor d'azote liquide — Resistance III + Absorption 6 + Strength I pendant 8s.
@@ -24,6 +27,8 @@ public class KinuhataPower extends Power {
               "Armor d'azote — Resistance III + Absorption 6 + Strength I 8s. Contre-attaque auto.",
               PowerType.ESPER, 40, 25);
         setCustomModelId(22);
+        this.ultimateCost = 0;
+        this.ultimateCooldownSeconds = 180;
     }
 
     @Override
@@ -96,6 +101,74 @@ public class KinuhataPower extends Power {
                 }
             }, DURATION_TICKS
         );
+
+        return true;
+    }
+
+    @Override
+    public boolean activateUltimate(UHCPlayer uhcPlayer) {
+        if (!canUseUltimate(uhcPlayer)) return false;
+        Player player = uhcPlayer.getBukkitPlayer();
+        if (player == null) return false;
+
+        showUltimateIntro(player, "NITROGEN ABSOLUTE ZERO", "Gel instantané 20 blocs — explosion 5s !");
+        consumeUltimateResources(uhcPlayer);
+
+        World world = player.getWorld();
+        Bukkit.broadcastMessage("§b❄ §fKinuhata §7active §bNITROGEN ABSOLUTE ZERO §7— Gel instantané + explosion 5s !");
+
+        // Collect alive enemies in 20 blocks
+        List<Player> frozenTargets = new ArrayList<>();
+        for (UHCPlayer u : ToaruUHC.getInstance().getGameManager().getPlayers().values()) {
+            if (!u.isAlive()) continue;
+            Player enemy = u.getBukkitPlayer();
+            if (enemy == null || !enemy.isOnline() || enemy.equals(player)) continue;
+            if (enemy.getLocation().distance(player.getLocation()) <= 20.0) {
+                frozenTargets.add(enemy);
+            }
+        }
+
+        // Apply freeze to each enemy
+        for (Player target : frozenTargets) {
+            target.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 120, 9));          // can't move 6s
+            target.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 120, 9));
+            target.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 60, 0));      // 3s blindness
+            world.spawnParticle(Particle.SNOWFLAKE, target.getLocation().add(0, 1, 0),
+                    30, 0.5, 0.7, 0.5, 0.0);
+            target.sendTitle("§b❄ NITROGEN ZERO", "§7Gelé — explosion imminente !", 3, 80, 10);
+        }
+
+        // Sounds
+        world.playSound(player.getLocation(), Sound.ENTITY_PLAYER_HURT_FREEZE, 1.0f, 0.8f);
+        world.playSound(player.getLocation(), Sound.AMBIENT_BASALT_DELTAS_LOOP, 0.8f, 0.5f);
+
+        // After 100 ticks (5s): detonate frozen enemies
+        ToaruUHC.getInstance().getServer().getScheduler().runTaskLater(
+                ToaruUHC.getInstance(), () -> {
+                    for (Player target : frozenTargets) {
+                        if (!target.isOnline()) continue;
+                        UHCPlayer uTarget = ToaruUHC.getInstance().getGameManager().getUHCPlayer(target);
+                        if (uTarget == null || !uTarget.isAlive()) continue;
+
+                        world.createExplosion(target.getLocation(), 3.0f, false, false, player);
+                        target.setVelocity(new Vector(
+                                (Math.random() - 0.5) * 1.5,
+                                3.0,
+                                (Math.random() - 0.5) * 1.5));
+                        target.damage(20.0, player);
+                        world.spawnParticle(Particle.SNOWFLAKE, target.getLocation(), 30, 0.5, 0.5, 0.5, 0.05);
+                        world.spawnParticle(Particle.CLOUD, target.getLocation(), 30, 0.5, 0.5, 0.5, 0.05);
+                    }
+
+                    // CONSTRAINT
+                    if (player.isOnline()) {
+                        uhcPlayer.setNitrogenArmorActive(false);
+                        player.damage(10.0);
+                        player.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 600, 2)); // Weakness III 30s
+                        uhcPlayer.setCooldown("nitrogen_armor", 30);
+                        Bukkit.broadcastMessage("§b❄ §fKinuhata §7— L'armure azote se fracasse — épuisée !");
+                    }
+                }, 100L);
 
         return true;
     }

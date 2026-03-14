@@ -10,6 +10,7 @@ import org.bukkit.potion.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.Collections;
 
 /**
  * MOVE POINT — Musujime Awaki
@@ -30,6 +31,8 @@ public class MovePointPower extends Power {
               "Téléporte 3 ennemis proches en l'air + Slow Fall. Backlash 3 coeurs.",
               PowerType.ESPER, 50, 25);
         setCustomModelId(26);
+        this.ultimateCost = 60;
+        this.ultimateCooldownSeconds = 180;
     }
 
     @Override
@@ -94,6 +97,73 @@ public class MovePointPower extends Power {
         awaki.damage(BACKLASH_DMG);
         awaki.sendMessage("§9⚡ §7Backlash — §c-3 coeurs §7(trauma du Move Point sur des êtres vivants)");
         world.spawnParticle(Particle.CRIT_MAGIC, awaki.getLocation().add(0,1,0), 20, 0.4,0.6,0.4,0.05);
+
+        return true;
+    }
+
+    @Override
+    public boolean activateUltimate(UHCPlayer uhcPlayer) {
+        if (!canUseUltimate(uhcPlayer)) return false;
+        Player awaki = uhcPlayer.getBukkitPlayer();
+        if (awaki == null) return false;
+
+        // Collecter les ennemis (max 5)
+        List<Player> targets = new ArrayList<>();
+        for (UHCPlayer u : ToaruUHC.getInstance().getGameManager().getPlayers().values()) {
+            if (!u.isAlive()) continue;
+            Player other = u.getBukkitPlayer();
+            if (other == null || !other.isOnline() || other.equals(awaki)) continue;
+            targets.add(other);
+            if (targets.size() >= 5) break;
+        }
+
+        if (targets.isEmpty()) {
+            awaki.sendMessage("§9📦 §7Move Point Storm — Aucune cible !");
+            return false;
+        }
+
+        showUltimateIntro(awaki, "MOVE POINT STORM", "TP vers 5 ennemis — 15 dégâts chacun !");
+        consumeUltimateResources(uhcPlayer);
+
+        for (Player p : org.bukkit.Bukkit.getOnlinePlayers())
+            p.sendMessage("§9📦 §fAwaki §7déclenche §9MOVE POINT STORM §7— 5 téléportations de combat !");
+
+        World world = awaki.getWorld();
+        final int totalTargets = targets.size();
+
+        for (int i = 0; i < targets.size(); i++) {
+            final Player target = targets.get(i);
+            final long delay = i * 10L;
+            ToaruUHC.getInstance().getServer().getScheduler().runTaskLater(ToaruUHC.getInstance(), () -> {
+                if (!awaki.isOnline() || !target.isOnline()) return;
+                UHCPlayer uTarget = ToaruUHC.getInstance().getGameManager().getUHCPlayer(target);
+                if (uTarget == null || !uTarget.isAlive()) return;
+
+                // Particules PORTAL au départ
+                world.spawnParticle(Particle.PORTAL, awaki.getLocation().add(0, 1, 0), 30, 0.4, 0.6, 0.4, 0.3);
+
+                // Téléporter derrière la cible
+                Location behind = target.getLocation().clone().add(
+                        target.getLocation().getDirection().multiply(-1.5));
+                behind.setYaw(target.getLocation().getYaw() + 180);
+                awaki.teleport(behind);
+
+                target.damage(15.0, awaki);
+                world.strikeLightningEffect(target.getLocation());
+                world.spawnParticle(Particle.PORTAL, target.getLocation().add(0, 1, 0), 30, 0.4, 0.6, 0.4, 0.3);
+                world.playSound(target.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.2f);
+
+                awaki.damage(4.0);
+            }, delay);
+        }
+
+        // Contrainte après le dernier TP + 10 ticks
+        ToaruUHC.getInstance().getServer().getScheduler().runTaskLater(ToaruUHC.getInstance(), () -> {
+            if (!awaki.isOnline()) return;
+            awaki.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 600, 0));
+            uhcPlayer.setCooldown("move_point", 60);
+            awaki.sendMessage("§9📦 §7Move Point Storm — §cBacklash total §c(§c" + totalTargets + "×4 HP§c)§7, Wither I 30s, désactivé 60s");
+        }, totalTargets * 10L + 10L);
 
         return true;
     }

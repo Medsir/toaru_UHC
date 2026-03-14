@@ -5,6 +5,9 @@ import fr.medsir.toaruhc.models.UHCPlayer;
 import fr.medsir.toaruhc.powers.Power;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
+import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,6 +32,8 @@ public class FrendaPower extends Power {
               "Pose des mines invisibles (max 5). Sneak+clic = détonation.",
               PowerType.ESPER, 25, 5);
         setCustomModelId(24);
+        this.ultimateCost = 0;
+        this.ultimateCooldownSeconds = 86400; // once per life
     }
 
     @Override
@@ -66,6 +71,66 @@ public class FrendaPower extends Power {
 
         player.sendMessage("§e💣 Mine posée §7(" + mines.size() + "/" + MAX_MINES
                 + " mines) §8— §7Sneak+clic pour détoner !");
+
+        return true;
+    }
+
+    @Override
+    public boolean activateUltimate(UHCPlayer uhcPlayer) {
+        if (!canUseUltimate(uhcPlayer)) return false;
+        Player player = uhcPlayer.getBukkitPlayer();
+        if (player == null) return false;
+
+        showUltimateIntro(player, "LAST RESORT ARSENAL", "Toutes les mines x3 + 5 grenades — BOOM !");
+        consumeUltimateResources(uhcPlayer);
+
+        World world = player.getWorld();
+        Bukkit.broadcastMessage("§c💥 §fFrend §7déclenche §cLAST RESORT ARSENAL §7— Dernier recours !");
+
+        // Step 1: Detonate all mines at 3x power
+        UUID uuid = player.getUniqueId();
+        List<Location> mines = MINES.remove(uuid);
+        if (mines != null && !mines.isEmpty()) {
+            for (Location mineLoc : mines) {
+                world.createExplosion(mineLoc, 6.0f, false, true, player);
+                world.spawnParticle(Particle.EXPLOSION_HUGE, mineLoc, 5, 0.3, 0.3, 0.3, 0.0);
+                world.playSound(mineLoc, Sound.ENTITY_GENERIC_EXPLODE, 1.5f, 0.7f);
+            }
+        }
+
+        // Step 2: Throw 5 grenades in fan spread (2 tick delays between each)
+        Vector lookDir = player.getLocation().getDirection();
+        double lookYaw = Math.atan2(-lookDir.getX(), lookDir.getZ()); // yaw in radians
+
+        for (int i = 0; i < 5; i++) {
+            final int idx = i;
+            ToaruUHC.getInstance().getServer().getScheduler().runTaskLater(
+                    ToaruUHC.getInstance(), () -> {
+                        if (!player.isOnline()) return;
+                        // Fan spread: angle offset (i-2) * 20 degrees
+                        double angleOffset = Math.toRadians((idx - 2) * 20.0);
+                        double grenadeAngle = lookYaw + angleOffset;
+                        double grenadeRange = 12 + Math.random() * 6;
+                        double gx = player.getLocation().getX() - Math.sin(grenadeAngle) * grenadeRange;
+                        double gz = player.getLocation().getZ() + Math.cos(grenadeAngle) * grenadeRange;
+                        double gy = world.getHighestBlockYAt((int) gx, (int) gz);
+                        Location targetLoc = new Location(world, gx, gy, gz);
+
+                        world.createExplosion(targetLoc, 5.0f, false, true, player);
+                        world.spawnParticle(Particle.EXPLOSION_HUGE, targetLoc, 3, 0.3, 0.3, 0.3, 0.0);
+                        world.playSound(targetLoc, Sound.ENTITY_GENERIC_EXPLODE, 1.5f, 0.8f);
+                    }, (long) (idx * 2L));
+        }
+
+        // CONSTRAINT after last grenade + 10 ticks
+        ToaruUHC.getInstance().getServer().getScheduler().runTaskLater(
+                ToaruUHC.getInstance(), () -> {
+                    if (!player.isOnline()) return;
+                    player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 100, 9));          // stun 5s
+                    player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 100, 9));
+                    player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 100, 0));     // blast blindness
+                    player.sendMessage("§c💥 §7Last Resort Arsenal — Étourdissement 5s (blast), ne peut être utilisé qu'une fois !");
+                }, (long) (5 * 2L + 10L));
 
         return true;
     }

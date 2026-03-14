@@ -10,6 +10,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 
 import java.util.Arrays;
 import java.util.Random;
@@ -35,6 +37,8 @@ public class OthinusPower extends Power {
               "50/50 — Destin ou catastrophe. Gungnir supprime le 50/50.",
               PowerType.ESPER, 60, 25);
         setCustomModelId(21);
+        this.ultimateCost = 80;
+        this.ultimateCooldownSeconds = 180;
     }
 
     @Override
@@ -73,6 +77,62 @@ public class OthinusPower extends Power {
             } else {
                 applyDefeat(player, world);
             }
+        }
+
+        return true;
+    }
+
+    @Override
+    public boolean activateUltimate(UHCPlayer uhcPlayer) {
+        if (!canUseUltimate(uhcPlayer)) return false;
+        Player player = uhcPlayer.getBukkitPlayer();
+        if (player == null) return false;
+
+        showUltimateIntro(player, "MAGIC GOD'S VERDICT", "Jugement divin — frappe tous + destin d'Othinus !");
+        consumeUltimateResources(uhcPlayer);
+
+        World world = player.getWorld();
+        Bukkit.broadcastMessage("§5✦ §fOthinus §7déclenche §5MAGIC GOD'S VERDICT §7— Jugement sur tous les joueurs !");
+
+        world.playSound(player.getLocation(), Sound.ENTITY_WITHER_SPAWN, 1.0f, 0.7f);
+        world.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 0.8f, 0.8f);
+
+        // Phase 1: Divine punishment on ALL alive players except Othinus
+        for (UHCPlayer u : ToaruUHC.getInstance().getGameManager().getPlayers().values()) {
+            if (!u.isAlive()) continue;
+            Player target = u.getBukkitPlayer();
+            if (target == null || !target.isOnline() || target.equals(player)) continue;
+
+            target.damage(15.0, player);
+            target.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 200, 2)); // Wither III 10s
+            world.strikeLightning(target.getLocation());
+
+            // SCULK_SOUL + DRAGON_BREATH burst
+            world.spawnParticle(Particle.SCULK_SOUL, target.getLocation().add(0, 1, 0),
+                    15, 0.5, 0.7, 0.5, 0.05);
+            world.spawnParticle(Particle.DRAGON_BREATH, target.getLocation().add(0, 1, 0),
+                    15, 0.4, 0.6, 0.4, 0.05);
+            target.sendTitle("§5✦ OTHINUS", "§cLe jugement divin s'abat !", 3, 30, 5);
+        }
+
+        // Phase 2: The coin toss for Othinus
+        boolean godMode = OthinusPower.hasGungnir(player);
+
+        if (godMode || RANDOM.nextBoolean()) {
+            // GOOD OUTCOME: 30s invincible + Strength III + Speed
+            player.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 600, 255, false, false));
+            player.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, 600, 2));   // Strength III
+            player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 300, 1));             // Speed II
+            Bukkit.broadcastMessage("§5✦ §7Le destin sourit à §fOthinus §7— 30s d'invincibilité absolue !");
+            player.sendTitle("§5✦ VICTORIEUSE", "§7Le destin t'appartient...", 5, 60, 15);
+        } else {
+            // BAD OUTCOME
+            player.damage(20.0);
+            player.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 300, 1));   // Wither II
+            player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 300, 1));     // Slowness II
+            uhcPlayer.setCooldown("half_a_god", 60); // normal power disabled 60s
+            Bukkit.broadcastMessage("§5✦ §7Le destin punit §fOthinus §7— même les Dieux ne contrôlent pas tout...");
+            player.sendTitle("§c✦ CHÂTIÉE", "§7Le destin se retourne contre toi...", 5, 60, 15);
         }
 
         return true;

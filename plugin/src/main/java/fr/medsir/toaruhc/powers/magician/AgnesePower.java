@@ -38,6 +38,8 @@ public class AgnesePower extends Power {
               "Rayon 30 blocs — 18 dmg, vole effets positifs, force 30s cooldown.",
               PowerType.MAGICIAN, 60, 20);
         setCustomModelId(29);
+        this.ultimateCost = 80;
+        this.ultimateCooldownSeconds = 240;
     }
 
     @Override
@@ -115,6 +117,99 @@ public class AgnesePower extends Power {
 
         // Raté
         agnese.sendMessage("§6🪷 Lotus Wand §7— §cRaté !");
+        return true;
+    }
+
+    @Override
+    public boolean activateUltimate(UHCPlayer uhcPlayer) {
+        if (!canUseUltimate(uhcPlayer)) return false;
+        Player agnese = uhcPlayer.getBukkitPlayer();
+        if (agnese == null) return false;
+
+        showUltimateIntro(agnese, "LOTUS NEEDLE STORM", "12 rayons simultanés en éventail !");
+        consumeUltimateResources(uhcPlayer);
+
+        for (Player p : org.bukkit.Bukkit.getOnlinePlayers())
+            p.sendMessage("§6🪷 §fAgnese §7déclenche §6LOTUS NEEDLE STORM §7— 12 aiguilles de Lotus !");
+
+        World world = agnese.getWorld();
+        Location eye = agnese.getEyeLocation();
+        org.bukkit.util.Vector baseDir = agnese.getLocation().getDirection().normalize();
+
+        // 12 rayons en éventail de 180° (15° d'écart)
+        for (int i = 0; i < 12; i++) {
+            double angleDeg = (i - 5.5) * 15.0;
+            double angleRad = Math.toRadians(angleDeg);
+
+            // Rotation horizontale du vecteur de base
+            double cos = Math.cos(angleRad);
+            double sin = Math.sin(angleRad);
+            org.bukkit.util.Vector beamDir = new org.bukkit.util.Vector(
+                    baseDir.getX() * cos - baseDir.getZ() * sin,
+                    baseDir.getY(),
+                    baseDir.getX() * sin + baseDir.getZ() * cos
+            ).normalize();
+
+            // Raycast
+            Location cur = eye.clone();
+            double dist = 0;
+            boolean hit = false;
+            while (dist < 30.0) {
+                cur.add(beamDir.clone().multiply(0.5));
+                dist += 0.5;
+
+                world.spawnParticle(Particle.FLAME,      cur, 1, 0.02, 0.02, 0.02, 0.0);
+                if ((int)(dist / 0.5) % 3 == 0)
+                    world.spawnParticle(Particle.CRIT_MAGIC, cur, 1, 0.05, 0.05, 0.05, 0.0);
+
+                if (cur.getBlock().getType().isSolid()) {
+                    world.spawnParticle(Particle.SMOKE_NORMAL, cur, 5, 0.15, 0.15, 0.15, 0.02);
+                    hit = true;
+                    break;
+                }
+
+                for (Entity entity : world.getNearbyEntities(cur, HIT_RADIUS, HIT_RADIUS, HIT_RADIUS)) {
+                    if (!(entity instanceof Player target)) continue;
+                    if (target.equals(agnese)) continue;
+                    UHCPlayer uTarget = ToaruUHC.getInstance().getGameManager().getUHCPlayer(target);
+                    if (uTarget == null || !uTarget.isAlive()) continue;
+
+                    // Voler effets positifs
+                    for (PotionEffectType type : POSITIVE_EFFECTS) {
+                        PotionEffect effect = target.getPotionEffect(type);
+                        if (effect != null) {
+                            agnese.addPotionEffect(effect);
+                            target.removePotionEffect(type);
+                        }
+                    }
+                    // Effacer tous les effets restants
+                    for (PotionEffect pe : new ArrayList<>(target.getActivePotionEffects()))
+                        target.removePotionEffect(pe.getType());
+
+                    target.damage(18.0, agnese);
+                    if (uTarget.getPower() != null)
+                        uTarget.setCooldown(uTarget.getPower().getId(), 30);
+
+                    world.spawnParticle(Particle.FLAME, target.getLocation().add(0, 1, 0), 20, 0.4, 0.6, 0.4, 0.08);
+                    world.spawnParticle(Particle.CRIT,  target.getLocation().add(0, 1, 0), 15, 0.3, 0.5, 0.3, 0.06);
+                    world.playSound(target.getLocation(), Sound.ENTITY_WITCH_DRINK, 1.0f, 1.3f);
+                    hit = true;
+                    break;
+                }
+                if (hit) break;
+            }
+        }
+
+        // Contraintes
+        uhcPlayer.setMana(0);
+        ToaruUHC.getInstance().getPowerManager().updateEnergyBar(uhcPlayer);
+        uhcPlayer.setCooldown("agnese", 60);
+        agnese.damage(8.0);
+        // Retirer tous les effets volés accumulés
+        for (PotionEffect pe : new ArrayList<>(agnese.getActivePotionEffects()))
+            agnese.removePotionEffect(pe.getType());
+        agnese.sendMessage("§6🪷 §7Lotus Storm — §c-8 HP§7, Mana vidé, effets volés perdus, désactivé 60s");
+
         return true;
     }
 }

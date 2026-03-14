@@ -4,10 +4,13 @@ import fr.medsir.toaruhc.ToaruUHC;
 import fr.medsir.toaruhc.models.UHCPlayer;
 import fr.medsir.toaruhc.powers.Power;
 import org.bukkit.*;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.*;
 import org.bukkit.potion.*;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
+import java.util.Collection;
 import java.util.Random;
 
 /**
@@ -31,6 +34,8 @@ public class GrimoirePower extends Power {
               "Active un grimoire aléatoire : malédiction, protection ou banissement.",
               PowerType.MAGICIAN, 30, 18);
         setCustomModelId(8);
+        this.ultimateCost = 0;
+        this.ultimateCooldownSeconds = 300;
     }
 
     @Override
@@ -46,6 +51,71 @@ public class GrimoirePower extends Power {
             case 1 -> activateNecronomicon(player);
             case 2 -> activateBanishment(player);
         }
+
+        return true;
+    }
+
+    @Override
+    public boolean activateUltimate(UHCPlayer uhcPlayer) {
+        if (!canUseUltimate(uhcPlayer)) return false;
+        Player player = uhcPlayer.getBukkitPlayer();
+        if (player == null) return false;
+
+        showUltimateIntro(player, "JOHN'S PENTAGRAM", "La magie absolue — soin et protection !");
+        consumeUltimateResources(uhcPlayer);
+
+        for (Player p : org.bukkit.Bukkit.getOnlinePlayers())
+            p.sendMessage("§f📖 §fIndex §7récite §fJOHN'S PENTAGRAM §7— Invincible pendant 20s !");
+
+        // Soin complet
+        double maxHp = player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
+        player.setHealth(maxHp);
+
+        // Reset propre cooldown normal
+        uhcPlayer.setCooldown("grimoire", 0);
+
+        // Supprimer tous les effets actifs
+        for (PotionEffect pe : player.getActivePotionEffects())
+            player.removePotionEffect(pe.getType());
+
+        // Résistance 255 pour 20s (400 ticks)
+        player.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 400, 255, false, false));
+
+        // Particules burst
+        World world = player.getWorld();
+        world.spawnParticle(Particle.END_ROD, player.getLocation().add(0, 1, 0), 60, 1.0, 1.5, 1.0, 0.2);
+        world.spawnParticle(Particle.TOTEM,   player.getLocation().add(0, 1, 0), 60, 1.0, 1.5, 1.0, 0.2);
+        world.spawnParticle(Particle.ENCHANTMENT_TABLE, player.getLocation().add(0, 2, 0), 50, 1.2, 0.5, 1.2, 0.3);
+
+        // Sons
+        world.playSound(player.getLocation(), Sound.ITEM_TOTEM_USE, 1.0f, 1.0f);
+        world.playSound(player.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 0.5f);
+
+        // Dégâts de rétroaction magique (tous dans 15 blocs sauf Index)
+        for (UHCPlayer u : ToaruUHC.getInstance().getGameManager().getPlayers().values()) {
+            if (!u.isAlive()) continue;
+            Player nearby = u.getBukkitPlayer();
+            if (nearby == null || !nearby.isOnline() || nearby.equals(player)) continue;
+            if (nearby.getLocation().distance(player.getLocation()) > 15.0) continue;
+            nearby.damage(10.0, player);
+        }
+
+        // Après 20s: contraintes
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!player.isOnline()) return;
+                player.removePotionEffect(PotionEffectType.DAMAGE_RESISTANCE);
+                uhcPlayer.setMana(0);
+                ToaruUHC.getInstance().getPowerManager().updateEnergyBar(uhcPlayer);
+                uhcPlayer.setCooldown("grimoire", 60);
+                player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 300, 9));
+                player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 300, 9));
+                player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 200, 0));
+                for (Player p : org.bukkit.Bukkit.getOnlinePlayers())
+                    p.sendMessage("§f📖 §7John's Pentagram s'effondre — Index s'effondre d'épuisement !");
+            }
+        }.runTaskLater(ToaruUHC.getInstance(), 400L);
 
         return true;
     }

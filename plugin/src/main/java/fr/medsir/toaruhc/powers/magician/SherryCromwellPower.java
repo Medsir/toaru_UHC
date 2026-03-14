@@ -5,8 +5,14 @@ import fr.medsir.toaruhc.models.UHCPlayer;
 import fr.medsir.toaruhc.powers.Power;
 import org.bukkit.*;
 import org.bukkit.entity.*;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * SHERRY CROMWELL — Ellis le Golem de Pierre
@@ -27,6 +33,8 @@ public class SherryCromwellPower extends Power {
               "Invoque Ellis — attaque l'ennemi le plus proche 5 secondes.",
               PowerType.MAGICIAN, 50, 30);
         setCustomModelId(15);
+        this.ultimateCost = 100;
+        this.ultimateCooldownSeconds = 200;
     }
 
     @Override
@@ -123,6 +131,117 @@ public class SherryCromwellPower extends Power {
                 tick[0]++;
             }
         }.runTaskTimer(ToaruUHC.getInstance(), 2L, 1L);
+
+        return true;
+    }
+
+    @Override
+    public boolean activateUltimate(UHCPlayer uhcPlayer) {
+        if (!canUseUltimate(uhcPlayer)) return false;
+        Player sherry = uhcPlayer.getBukkitPlayer();
+        if (sherry == null) return false;
+
+        showUltimateIntro(sherry, "GOLEM ARMY", "3 Ellis simultanés — attaque totale !");
+        consumeUltimateResources(uhcPlayer);
+
+        for (Player p : org.bukkit.Bukkit.getOnlinePlayers())
+            p.sendMessage("§8🗿 §fSherry §7invoque §8GOLEM ARMY §7— 3 Ellis simultanés !");
+
+        World world = sherry.getWorld();
+
+        // Collecter jusqu'à 3 ennemis (par distance)
+        List<Player> enemies = new ArrayList<>();
+        for (UHCPlayer u : ToaruUHC.getInstance().getGameManager().getPlayers().values()) {
+            if (!u.isAlive()) continue;
+            Player other = u.getBukkitPlayer();
+            if (other == null || !other.isOnline() || other.equals(sherry)) continue;
+            enemies.add(other);
+            if (enemies.size() >= 3) break;
+        }
+
+        AtomicInteger wardensDone = new AtomicInteger(0);
+        int totalWardens = Math.max(1, enemies.size());
+
+        for (int idx = 0; idx < enemies.size(); idx++) {
+            final Player assignedTarget = enemies.get(idx);
+            final int wardenNum = idx + 1;
+
+            // Offset de spawn
+            double offsetAngle = idx * (Math.PI * 2.0 / 3.0);
+            Location spawnLoc = sherry.getLocation().clone().add(
+                    Math.cos(offsetAngle) * 1.5, 0, Math.sin(offsetAngle) * 1.5);
+
+            Warden warden = (Warden) world.spawnEntity(spawnLoc, EntityType.WARDEN);
+            warden.setCustomName("§8Ellis #" + wardenNum);
+            warden.setCustomNameVisible(true);
+            warden.setPersistent(false);
+            warden.setAI(false);
+
+            world.playSound(spawnLoc, Sound.ENTITY_WARDEN_EMERGE, 0.8f, 1.0f);
+
+            final int[] tick = {0};
+            final int[] lastAttack = {-20};
+
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    if (tick[0] >= 100 || !warden.isValid() || warden.isDead()) {
+                        if (warden.isValid() && !warden.isDead()) {
+                            world.spawnParticle(Particle.CLOUD, warden.getLocation().add(0,1,0), 20, 0.5,0.6,0.5,0.05);
+                            warden.remove();
+                        }
+                        // Vérifier si c'est le dernier warden
+                        if (wardensDone.incrementAndGet() >= totalWardens) {
+                            // Contrainte après que tous soient partis
+                            if (sherry.isOnline()) {
+                                sherry.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 400, 3));
+                                sherry.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 200, 2));
+                                uhcPlayer.setMana(0);
+                                ToaruUHC.getInstance().getPowerManager().updateEnergyBar(uhcPlayer);
+                                sherry.sendMessage("§8🗿 §7Golem Army — §7Épuisement — Slowness IV 20s, Mana vidé");
+                            }
+                        }
+                        cancel();
+                        return;
+                    }
+
+                    if (assignedTarget.isOnline()) {
+                        UHCPlayer uTarget = ToaruUHC.getInstance().getGameManager().getUHCPlayer(assignedTarget);
+                        if (uTarget != null && uTarget.isAlive()) {
+                            Location wLoc = warden.getLocation();
+                            Location tLoc = assignedTarget.getLocation();
+                            double dist = wLoc.distance(tLoc);
+
+                            if (dist > 1.5) {
+                                Vector move = tLoc.toVector().subtract(wLoc.toVector()).setY(0).normalize().multiply(0.4);
+                                if (tLoc.getY() - wLoc.getY() > 0.3) move.setY(0.45);
+                                warden.setVelocity(move);
+                            }
+
+                            Location look = wLoc.clone();
+                            look.setDirection(tLoc.clone().subtract(wLoc).toVector());
+                            warden.teleport(look);
+
+                            if (dist <= 2.5 && (tick[0] - lastAttack[0]) >= 20) {
+                                lastAttack[0] = tick[0];
+                                assignedTarget.damage(10.0, warden);
+                                world.playSound(wLoc, Sound.ENTITY_WARDEN_ATTACK_IMPACT, 1.0f, 0.8f);
+                            }
+                        }
+                    }
+                    tick[0]++;
+                }
+            }.runTaskTimer(ToaruUHC.getInstance(), 2L, 1L);
+        }
+
+        // Si aucun ennemi trouvé, déclencher la contrainte immédiatement
+        if (enemies.isEmpty()) {
+            sherry.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 400, 3));
+            sherry.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 200, 2));
+            uhcPlayer.setMana(0);
+            ToaruUHC.getInstance().getPowerManager().updateEnergyBar(uhcPlayer);
+            sherry.sendMessage("§8🗿 §7Golem Army — §7Épuisement — Slowness IV 20s, Mana vidé");
+        }
 
         return true;
     }

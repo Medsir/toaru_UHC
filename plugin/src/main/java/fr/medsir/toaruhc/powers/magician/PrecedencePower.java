@@ -6,6 +6,7 @@ import fr.medsir.toaruhc.powers.Power;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.*;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
 /**
@@ -24,6 +25,8 @@ public class PrecedencePower extends Power {
               "Marque un ennemi : Glowing 8s + Faiblesse II + Ralentissement II 6s.",
               PowerType.MAGICIAN, 35, 25);
         setCustomModelId(14);
+        this.ultimateCost = 80;
+        this.ultimateCooldownSeconds = 180;
     }
 
     @Override
@@ -66,6 +69,71 @@ public class PrecedencePower extends Power {
         target.sendMessage("§6⚖ §cPrecedence de §b" + player.getName()
                 + " §c— Tu es marqué 8s !");
         target.sendTitle("§6⚖ PRECEDENCE", "§7Marqué par Terra of the Left...", 5, 70, 10);
+        return true;
+    }
+
+    @Override
+    public boolean activateUltimate(UHCPlayer uhcPlayer) {
+        if (!canUseUltimate(uhcPlayer)) return false;
+        Player player = uhcPlayer.getBukkitPlayer();
+        if (player == null) return false;
+
+        showUltimateIntro(player, "PRECEDENCE: ZERO DAMAGE", "J'ai posé la précédence — aucune attaque ne dépasse 1 !");
+        consumeUltimateResources(uhcPlayer);
+
+        for (Player p : org.bukkit.Bukkit.getOnlinePlayers())
+            p.sendMessage("§a🌿 §fTerra §7active §aPRECEDENCE: ZERO DAMAGE §7— 10s d'attaques inefficaces !");
+
+        World world = player.getWorld();
+
+        // Donner DAMAGE_RESISTANCE amplifier 254 à tous les joueurs vivants
+        for (UHCPlayer u : ToaruUHC.getInstance().getGameManager().getPlayers().values()) {
+            if (!u.isAlive()) continue;
+            Player target = u.getBukkitPlayer();
+            if (target == null || !target.isOnline()) continue;
+            if (target.equals(player)) {
+                target.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 200, 255, false, false));
+            } else {
+                target.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 200, 254, false, false));
+            }
+        }
+
+        // Terra immobilisée (concentration)
+        player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 200, 9, false, false));
+
+        // Particules dorées/vertes en continu autour de tous les joueurs
+        new BukkitRunnable() {
+            int tick = 0;
+            @Override
+            public void run() {
+                if (tick >= 200) { cancel(); return; }
+                if (tick % 5 == 0) {
+                    for (UHCPlayer u : ToaruUHC.getInstance().getGameManager().getPlayers().values()) {
+                        if (!u.isAlive()) continue;
+                        Player target = u.getBukkitPlayer();
+                        if (target == null || !target.isOnline()) continue;
+                        world.spawnParticle(Particle.CRIT_MAGIC, target.getLocation().add(0, 1, 0),
+                                5, 0.5, 0.7, 0.5, 0.05);
+                    }
+                }
+                tick++;
+            }
+        }.runTaskTimer(ToaruUHC.getInstance(), 0L, 1L);
+
+        // Contrainte après 200 ticks
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!player.isOnline()) return;
+                player.damage(15.0);
+                player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 200, 9));
+                player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 200, 9));
+                player.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 200, 9));
+                for (Player p : org.bukkit.Bukkit.getOnlinePlayers())
+                    p.sendMessage("§a🌿 §7La Précédence de Terra s'effondre — elle tombe d'épuisement !");
+            }
+        }.runTaskLater(ToaruUHC.getInstance(), 200L);
+
         return true;
     }
 

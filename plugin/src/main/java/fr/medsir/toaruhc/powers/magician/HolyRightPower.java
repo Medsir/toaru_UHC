@@ -5,6 +5,8 @@ import fr.medsir.toaruhc.models.UHCPlayer;
 import fr.medsir.toaruhc.powers.Power;
 import org.bukkit.*;
 import org.bukkit.entity.*;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
@@ -25,6 +27,8 @@ public class HolyRightPower extends Power {
               "Faisceau saint ultime — 18 dégâts + foudre sur 80 blocs.",
               PowerType.MAGICIAN, 60, 40);
         setCustomModelId(13);
+        this.ultimateCost = 100;
+        this.ultimateCooldownSeconds = 240;
     }
 
     @Override
@@ -42,6 +46,70 @@ public class HolyRightPower extends Power {
         player.sendTitle("§e✝ HOLY RIGHT", "§7La droite qui dépasse Dieu...", 5, 50, 10);
 
         fireHolyBeam(player, start, direction);
+        return true;
+    }
+
+    @Override
+    public boolean activateUltimate(UHCPlayer uhcPlayer) {
+        if (!canUseUltimate(uhcPlayer)) return false;
+        Player player = uhcPlayer.getBukkitPlayer();
+        if (player == null) return false;
+
+        showUltimateIntro(player, "HOLY RIGHT OVERLOAD", "La lumière sacrée frappe toute la carte !");
+        consumeUltimateResources(uhcPlayer);
+
+        for (Player p : org.bukkit.Bukkit.getOnlinePlayers())
+            p.sendMessage("§e☀ §fFiamma §7déchaîne §eHOLY RIGHT OVERLOAD §7— Toute la carte est frappée !");
+
+        World world = player.getWorld();
+        Location loc = player.getLocation();
+
+        // Fiamma lévite + invincible pendant le cast
+        player.addPotionEffect(new PotionEffect(PotionEffectType.LEVITATION, 100, 1));
+        player.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 100, 255, false, false));
+
+        // Colonne de lumière
+        for (double h = 0; h < 15; h += 0.5) {
+            world.spawnParticle(Particle.END_ROD, loc.clone().add(0, h, 0), 3, 0.2, 0.05, 0.2, 0.02);
+        }
+
+        // Sons
+        world.playSound(loc, Sound.ENTITY_WITHER_SHOOT, 1.0f, 0.5f);
+        world.playSound(loc, Sound.ENTITY_WITHER_SHOOT, 1.0f, 0.8f);
+        world.playSound(loc, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.5f, 0.7f);
+
+        // Frappe tous les ennemis vivants
+        for (UHCPlayer u : ToaruUHC.getInstance().getGameManager().getPlayers().values()) {
+            if (!u.isAlive()) continue;
+            Player target = u.getBukkitPlayer();
+            if (target == null || !target.isOnline() || target.equals(player)) continue;
+
+            target.damage(20.0, player);
+            target.setFireTicks(100);
+            // Supprimer effets positifs
+            for (PotionEffect pe : target.getActivePotionEffects()) {
+                PotionEffectType t = pe.getType();
+                if (t == PotionEffectType.SPEED || t == PotionEffectType.INCREASE_DAMAGE
+                        || t == PotionEffectType.DAMAGE_RESISTANCE || t == PotionEffectType.REGENERATION
+                        || t == PotionEffectType.ABSORPTION || t == PotionEffectType.JUMP
+                        || t == PotionEffectType.FIRE_RESISTANCE || t == PotionEffectType.INVISIBILITY) {
+                    target.removePotionEffect(t);
+                }
+            }
+            world.strikeLightning(target.getLocation());
+            world.spawnParticle(Particle.TOTEM, target.getLocation().add(0, 1, 0), 25, 0.5, 0.7, 0.5, 0.1);
+            target.sendTitle("§e☀ HOLY RIGHT", "§cLumière sacrée !", 3, 25, 5);
+        }
+
+        // Contraintes
+        uhcPlayer.setMana(0);
+        ToaruUHC.getInstance().getPowerManager().updateEnergyBar(uhcPlayer);
+        player.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 400, 2));
+        player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 200, 1));
+        player.damage(10.0);
+        uhcPlayer.setCooldown("holy_right", 90);
+        player.sendMessage("§e☀ §7Holy Right Overload — §c-10 HP§7, Mana vidé, Weakness III, désactivé 90s");
+
         return true;
     }
 

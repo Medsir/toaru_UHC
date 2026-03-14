@@ -36,6 +36,8 @@ public class MeltdownerPower extends Power {
               "TOGGLE — re-clic pour arrêter. Drain AIM croissant. Dégâts augmentent.",
               PowerType.ESPER, 0, 0); // coût/cooldown gérés manuellement
         setCustomModelId(4);
+        this.ultimateCost = 0;
+        this.ultimateCooldownSeconds = 150;
     }
 
     @Override
@@ -161,6 +163,88 @@ public class MeltdownerPower extends Power {
                 tick++;
             }
         }.runTaskTimer(ToaruUHC.getInstance(), 0L, 1L);
+
+        return true;
+    }
+
+    @Override
+    public boolean activateUltimate(UHCPlayer uhcPlayer) {
+        if (!canUseUltimate(uhcPlayer)) return false;
+        Player player = uhcPlayer.getBukkitPlayer();
+        if (player == null) return false;
+
+        // Stop any active beam first
+        if (uhcPlayer.isMeltdownerActive()) {
+            uhcPlayer.setMeltdownerActive(false);
+        }
+
+        showUltimateIntro(player, "CROSS MELTDOWN", "4 faisceaux simultanés — 40 blocs !");
+        consumeUltimateResources(uhcPlayer);
+
+        World world = player.getWorld();
+        Bukkit.broadcastMessage("§c🔴 §fMugino §7déclenche §cCROSS MELTDOWN §7— 4 faisceaux Meltdowner simultanés !");
+
+        world.playSound(player.getLocation(), Sound.ENTITY_WARDEN_SONIC_BOOM, 1.0f, 0.8f);
+        world.playSound(player.getLocation(), Sound.ENTITY_WARDEN_SONIC_BOOM, 1.0f, 1.2f);
+        world.playSound(player.getLocation(), Sound.ENTITY_BLAZE_SHOOT, 1.5f, 0.5f);
+
+        // Fire 4 beams: N, S, E, W
+        Vector[] directions = {
+            new Vector(1, 0, 0),
+            new Vector(-1, 0, 0),
+            new Vector(0, 0, 1),
+            new Vector(0, 0, -1)
+        };
+
+        Location eyeLoc = player.getEyeLocation();
+
+        for (Vector beamDir : directions) {
+            Location cur = eyeLoc.clone();
+            double dist = 0;
+            int stepNum = 0;
+
+            while (dist < 40.0) {
+                cur.add(beamDir.clone().multiply(0.5));
+                dist += 0.5;
+                stepNum++;
+
+                // Particles per step
+                world.spawnParticle(Particle.FLAME, cur, 3, 0.05, 0.05, 0.05, 0.02);
+                world.spawnParticle(Particle.CRIT_MAGIC, cur, 2, 0.07, 0.07, 0.07, 0.0);
+                if (stepNum % 8 == 0) {
+                    world.spawnParticle(Particle.SONIC_BOOM, cur, 1, 0.0, 0.0, 0.0, 0.0);
+                }
+
+                // Hit detection radius 1.5
+                for (Entity entity : world.getNearbyEntities(cur, 1.5, 1.5, 1.5)) {
+                    if (!(entity instanceof Player target)) continue;
+                    if (target.equals(player)) continue;
+                    UHCPlayer uTarget = ToaruUHC.getInstance().getGameManager().getUHCPlayer(target);
+                    if (uTarget == null || !uTarget.isAlive()) continue;
+
+                    target.damage(8.0, player);
+                    target.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 60, 1));
+                    Vector kb = beamDir.clone().multiply(0.8);
+                    target.setVelocity(target.getVelocity().add(kb));
+                }
+
+                // Block hit
+                if (cur.getBlock().getType().isSolid()) {
+                    world.createExplosion(cur.clone(), 1.5f, false, true);
+                    break;
+                }
+            }
+        }
+
+        // CONSTRAINT: immediately after firing
+        player.damage(10.0);
+        uhcPlayer.setAim(0);
+        ToaruUHC.getInstance().getPowerManager().updateEnergyBar(uhcPlayer);
+        player.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 600, 3));  // Weakness IV 30s
+        player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 400, 2));      // Slowness III 20s
+        player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 100, 0)); // Blindness 5s
+        uhcPlayer.setCooldown("meltdowner", 45);
+        player.sendMessage("§c🔴 §7Cross Meltdown — §c-10 HP§7, AIM vidé, Weakness IV 30s, Slowness III 20s");
 
         return true;
     }

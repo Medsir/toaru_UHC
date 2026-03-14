@@ -4,6 +4,7 @@ import fr.medsir.toaruhc.ToaruUHC;
 import fr.medsir.toaruhc.models.UHCPlayer;
 import fr.medsir.toaruhc.powers.Power;
 import org.bukkit.*;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -23,6 +24,8 @@ public class OrsolaPower extends Power {
               "Révèle les rôles de tous les joueurs en vie.",
               PowerType.MAGICIAN, 30, 60);
         setCustomModelId(23);
+        this.ultimateCost = 50;
+        this.ultimateCooldownSeconds = 180;
     }
 
     @Override
@@ -116,6 +119,67 @@ public class OrsolaPower extends Power {
                     remaining[0]--;
                 }
             }.runTaskTimer(ToaruUHC.getInstance(), 0L, 20L);
+        }
+
+        return true;
+    }
+
+    @Override
+    public boolean activateUltimate(UHCPlayer uhcPlayer) {
+        if (!canUseUltimate(uhcPlayer)) return false;
+        Player player = uhcPlayer.getBukkitPlayer();
+        if (player == null) return false;
+
+        showUltimateIntro(player, "GOSPEL TRUTH", "Analyse parfaite — tout est révélé !");
+        consumeUltimateResources(uhcPlayer);
+
+        for (Player p : org.bukkit.Bukkit.getOnlinePlayers())
+            p.sendMessage("§a📖 §fOrsola §7active §aGOSPEL TRUTH §7— Information absolue !");
+
+        World world = player.getWorld();
+
+        // Broadcast complet de tous les joueurs en vie
+        for (UHCPlayer u : ToaruUHC.getInstance().getGameManager().getPlayers().values()) {
+            if (!u.isAlive()) continue;
+            Player other = u.getBukkitPlayer();
+            if (other == null || !other.isOnline()) continue;
+
+            double hp = other.getHealth();
+            double maxHp = other.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue();
+            double hearts = hp / 2.0;
+            double maxHearts = maxHp / 2.0;
+            String powerName = u.getPower() != null ? u.getPower().getName() : "§7Aucun";
+            String cdStr = u.getPower() != null ? u.getRemainingCooldown(u.getPower().getId()) + "s" : "N/A";
+            int aimOrMana = u.getPower() != null
+                    ? (u.getPower().getType() == Power.PowerType.ESPER ? u.getAim() : u.getMana())
+                    : 0;
+            Location loc = other.getLocation();
+
+            String info = "§a📖 §f" + other.getName()
+                    + " §7HP: §c" + String.format("%.1f", hearts) + "§7/§c" + String.format("%.1f", maxHearts)
+                    + " §8| §7Pouvoir: " + powerName + " (CD: " + cdStr + ")"
+                    + " §8| §7AIM: " + aimOrMana
+                    + " §8| §7Coords: " + loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ();
+            for (Player p : org.bukkit.Bukkit.getOnlinePlayers())
+                p.sendMessage(info);
+        }
+
+        // Glowing 20s sur tous les joueurs
+        for (UHCPlayer u : ToaruUHC.getInstance().getGameManager().getPlayers().values()) {
+            if (!u.isAlive()) continue;
+            Player target = u.getBukkitPlayer();
+            if (target == null || !target.isOnline()) continue;
+            target.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 400, 0));
+        }
+
+        // Contrainte
+        player.damage(5.0);
+        player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 400, 0));
+        player.sendMessage("§a📖 §7Gospel Truth — §c-5 HP§7, Aveugle 20s (surcharge d'information)");
+
+        // Pilier de TOTEM révélant la position d'Orsola
+        for (double h = 0; h < 10; h += 0.5) {
+            world.spawnParticle(Particle.TOTEM, player.getLocation().add(0, h, 0), 3, 0.15, 0.05, 0.15, 0.02);
         }
 
         return true;

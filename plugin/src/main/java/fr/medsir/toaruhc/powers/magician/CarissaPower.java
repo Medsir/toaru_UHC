@@ -8,6 +8,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.util.Vector;
 
 /**
  * ⚔ CURTANA ORIGINAL - Carissa
@@ -25,6 +26,8 @@ public class CarissaPower extends Power {
               "Tranche la réalité — Buff massif + Debuff 80 blocs pendant 10s.",
               PowerType.MAGICIAN, 60, 45);
         setCustomModelId(16);
+        this.ultimateCost = 80;
+        this.ultimateCooldownSeconds = 180;
     }
 
     @Override
@@ -76,7 +79,7 @@ public class CarissaPower extends Power {
                 + " ennemi(s) §7affaibli(s) dans 80 blocs ! §6Buff Carissa 10s !");
         player.sendTitle("§6⚔ CURTANA ORIGINAL", "§7La réalité se soumet à toi", 5, 60, 15);
 
-        // Aura pulsante : anneaux de particules toutes les 2 secondes pendant 10s
+        // Aura pulsante: anneaux de particules toutes les 2 secondes pendant 10s
         new BukkitRunnable() {
             int pulses = 0;
 
@@ -99,6 +102,66 @@ public class CarissaPower extends Power {
                 pulses++;
             }
         }.runTaskTimer(ToaruUHC.getInstance(), 0L, 40L); // toutes les 2 secondes
+
+        return true;
+    }
+
+    @Override
+    public boolean activateUltimate(UHCPlayer uhcPlayer) {
+        if (!canUseUltimate(uhcPlayer)) return false;
+        Player player = uhcPlayer.getBukkitPlayer();
+        if (player == null) return false;
+
+        showUltimateIntro(player, "CURTANA ORIGINAL: TRUE FORM", "La réalité se déchire — 100 blocs !");
+        consumeUltimateResources(uhcPlayer);
+
+        for (Player p : org.bukkit.Bukkit.getOnlinePlayers())
+            p.sendMessage("§d⚔ §fCarissa §7dévoile §dCURTANA ORIGINAL TRUE FORM §7— La réalité se déchire sur 100 blocs !");
+
+        World world = player.getWorld();
+        Location origin = player.getLocation();
+
+        // Frapper tous les ennemis dans 100 blocs
+        for (UHCPlayer u : ToaruUHC.getInstance().getGameManager().getPlayers().values()) {
+            if (!u.isAlive()) continue;
+            Player target = u.getBukkitPlayer();
+            if (target == null || !target.isOnline() || target.equals(player)) continue;
+            if (target.getLocation().distance(origin) > 100.0) continue;
+
+            target.damage(25.0, player);
+            target.setVelocity(new Vector(Math.random() - 0.5, 1.5, Math.random() - 0.5));
+            target.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 200, 3));
+            target.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 60, 0));
+            target.addPotionEffect(new PotionEffect(PotionEffectType.CONFUSION, 60, 0));
+            world.strikeLightning(target.getLocation());
+            world.spawnParticle(Particle.CRIT_MAGIC, target.getLocation().add(0, 1, 0), 30, 0.6, 0.8, 0.6, 0.1);
+            target.sendTitle("§d⚔ CURTANA ORIGINAL", "§cLa réalité se déchire !", 3, 30, 5);
+        }
+
+        // 50 éclairs aléatoires dans 30 blocs sur 10 ticks (par paires de 5)
+        final int[] lightningCount = {0};
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (lightningCount[0] >= 10) { cancel(); return; }
+                for (int i = 0; i < 5; i++) {
+                    double rx = (Math.random() - 0.5) * 60;
+                    double rz = (Math.random() - 0.5) * 60;
+                    Location randomLoc = origin.clone().add(rx, 0, rz);
+                    world.strikeLightning(randomLoc);
+                }
+                lightningCount[0]++;
+            }
+        }.runTaskTimer(ToaruUHC.getInstance(), 0L, 2L);
+
+        // Contraintes
+        player.damage(15.0);
+        uhcPlayer.setMana(0);
+        ToaruUHC.getInstance().getPowerManager().updateEnergyBar(uhcPlayer);
+        player.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 600, 3));
+        player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 200, 2));
+        uhcPlayer.setCooldown("curtana_original", 30);
+        player.sendMessage("§d⚔ §7Curtana Original True Form — §c-15 HP§7, Mana vidé, Weakness IV 30s");
 
         return true;
     }

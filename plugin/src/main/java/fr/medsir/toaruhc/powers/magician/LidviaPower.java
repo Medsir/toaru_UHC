@@ -33,6 +33,8 @@ public class LidviaPower extends Power {
               "Plante la Croix — zone 30 blocs, malédictions & dégâts pendant 15s.",
               PowerType.MAGICIAN, 80, 50);
         setCustomModelId(30);
+        this.ultimateCost = 100;
+        this.ultimateCooldownSeconds = 300;
     }
 
     @Override
@@ -122,6 +124,99 @@ public class LidviaPower extends Power {
                         world.spawnParticle(Particle.SPELL_MOB, p.getLocation().add(0,1,0),
                                 10, 0.4, 0.5, 0.4, 0.01);
                         p.sendActionBar("§f✝ §7Zone maudite — §c-1 HP §7+ §eweak §7+ cooldown !");
+                    }
+                }
+                tick++;
+            }
+        }.runTaskTimer(ToaruUHC.getInstance(), 0L, 1L);
+
+        return true;
+    }
+
+    @Override
+    public boolean activateUltimate(UHCPlayer uhcPlayer) {
+        if (!canUseUltimate(uhcPlayer)) return false;
+        Player lidvia = uhcPlayer.getBukkitPlayer();
+        if (lidvia == null) return false;
+
+        showUltimateIntro(lidvia, "WORLD CROSS", "La Croix du Monde — toute la carte est maudite 20s !");
+        consumeUltimateResources(uhcPlayer);
+
+        for (Player p : Bukkit.getOnlinePlayers())
+            p.sendMessage("§f✝ §fLidvia §7plante la §fCROIX DU MONDE §7— Toute la carte maudite 20s !");
+
+        World world = lidvia.getWorld();
+        Location origin = lidvia.getLocation().clone();
+
+        // Immobiliser Lidvia
+        lidvia.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 400, 9, false, false));
+        lidvia.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 400, 9, false, false));
+
+        // Marqueur ArmorStand
+        ArmorStand marker = (ArmorStand) world.spawnEntity(origin, EntityType.ARMOR_STAND);
+        marker.setVisible(false);
+        marker.setGravity(false);
+        marker.setInvulnerable(true);
+        marker.setCustomName("§f✝ Croix du Monde");
+        marker.setCustomNameVisible(true);
+
+        world.playSound(origin, Sound.BLOCK_BELL_USE, 1.5f, 0.3f);
+        world.playSound(origin, Sound.ENTITY_WITHER_SPAWN, 0.5f, 0.5f);
+
+        new BukkitRunnable() {
+            int tick = 0;
+            @Override
+            public void run() {
+                if (tick >= 400 || !marker.isValid()) {
+                    cancel();
+                    // Cleanup
+                    marker.remove();
+                    // Explosion finale
+                    world.spawnParticle(Particle.EXPLOSION_HUGE, origin.clone().add(0,1,0), 5, 0.5,0.5,0.5,0.1);
+                    world.spawnParticle(Particle.TOTEM,           origin.clone().add(0,1,0), 40, 1.0,1.5,1.0,0.2);
+                    world.playSound(origin, Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 0.5f);
+
+                    if (lidvia.isOnline()) {
+                        lidvia.damage(15.0);
+                        uhcPlayer.setMana(0);
+                        ToaruUHC.getInstance().getPowerManager().updateEnergyBar(uhcPlayer);
+                        for (Player p : Bukkit.getOnlinePlayers())
+                            p.sendMessage("§f✝ §7La Croix du Monde s'effondre — Lidvia s'effondre d'épuisement !");
+                    }
+                    return;
+                }
+
+                // Croix en particules END_ROD (pilier vertical + 4 bras horizontaux, 50 blocs)
+                if (tick % 5 == 0) {
+                    // Pilier vertical
+                    for (double h = 0; h < 15; h += 1.0)
+                        world.spawnParticle(Particle.END_ROD, origin.clone().add(0, h, 0),
+                                1, 0.1, 0.05, 0.1, 0.0);
+                    // Bras N/S/E/O
+                    for (double d = 1; d <= 50; d += 2.0) {
+                        world.spawnParticle(Particle.END_ROD, origin.clone().add(d,  2, 0), 1, 0.1, 0.1, 0.1, 0.0);
+                        world.spawnParticle(Particle.END_ROD, origin.clone().add(-d, 2, 0), 1, 0.1, 0.1, 0.1, 0.0);
+                        world.spawnParticle(Particle.END_ROD, origin.clone().add(0,  2, d), 1, 0.1, 0.1, 0.1, 0.0);
+                        world.spawnParticle(Particle.END_ROD, origin.clone().add(0,  2, -d), 1, 0.1, 0.1, 0.1, 0.0);
+                    }
+                }
+
+                // Pulse toutes les 40 ticks (2s)
+                if (tick % 40 == 0 && tick > 0) {
+                    world.playSound(origin, Sound.BLOCK_BELL_USE, 1.0f, 0.6f);
+
+                    // Affecter TOUS les joueurs en vie (Lidvia incluse)
+                    for (UHCPlayer u : ToaruUHC.getInstance().getGameManager().getPlayers().values()) {
+                        if (!u.isAlive()) continue;
+                        Player p = u.getBukkitPlayer();
+                        if (p == null || !p.isOnline()) continue;
+
+                        p.damage(2.0);
+                        p.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 50, 0));
+                        if (u.getPower() != null) u.setCooldown(u.getPower().getId(), 5);
+                        world.spawnParticle(Particle.SPELL_MOB, p.getLocation().add(0, 1, 0),
+                                10, 0.4, 0.5, 0.4, 0.01);
+                        p.sendActionBar("§f✝ §7Croix du Monde — §cMalediction universelle !");
                     }
                 }
                 tick++;

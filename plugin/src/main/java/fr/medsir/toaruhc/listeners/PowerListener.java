@@ -64,7 +64,15 @@ public class PowerListener implements Listener {
         Power power = u.getPower();
         if (power == null) return;
 
-        if (power.activate(u)) plugin.getPowerManager().updateEnergyBar(u);
+        // SHIFT + Clic droit = ULTIMATE
+        if (player.isSneaking()) {
+            boolean used = power.activateUltimate(u);
+            if (!used) player.sendMessage("§7§o[✦ ULTIMATE non disponible ou en recharge]");
+            else plugin.getPowerManager().updateEnergyBar(u);
+        } else {
+            // Clic droit normal = pouvoir
+            if (power.activate(u)) plugin.getPowerManager().updateEnergyBar(u);
+        }
     }
 
     /**

@@ -24,6 +24,8 @@ public class KamisatoPower extends Power {
               "Bannit l'ennemi visé dans un monde alternatif — 60 blocs en l'air.",
               PowerType.ESPER, 45, 30);
         setCustomModelId(18);
+        this.ultimateCost = 0;
+        this.ultimateCooldownSeconds = 86400; // effectively once per game
     }
 
     @Override
@@ -93,6 +95,69 @@ public class KamisatoPower extends Power {
                 }
             }, 160L
         );
+
+        return true;
+    }
+
+    @Override
+    public boolean activateUltimate(UHCPlayer uhcPlayer) {
+        if (!canUseUltimate(uhcPlayer)) return false;
+        Player player = uhcPlayer.getBukkitPlayer();
+        if (player == null) return false;
+
+        // HP Check: must have taken damage (≤ 8 hearts = 16.0 HP)
+        if (player.getHealth() > 16.0) {
+            player.sendMessage("§5🌀 §cWorld Rejecter — Impossible si HP max !");
+            return false;
+        }
+
+        // Find nearest alive enemy (any range)
+        Player target = null;
+        double bestDist = Double.MAX_VALUE;
+        for (UHCPlayer u : ToaruUHC.getInstance().getGameManager().getPlayers().values()) {
+            if (!u.isAlive()) continue;
+            Player other = u.getBukkitPlayer();
+            if (other == null || !other.isOnline() || other.equals(player)) continue;
+            double dist = other.getLocation().distance(player.getLocation());
+            if (dist < bestDist) { bestDist = dist; target = other; }
+        }
+
+        if (target == null) {
+            player.sendMessage("§5🌀 §cAucun ennemi en vie !");
+            return false;
+        }
+
+        showUltimateIntro(player, "WORLD REJECTER", "Envoie l'ennemi le plus proche dans un autre monde !");
+        consumeUltimateResources(uhcPlayer);
+
+        World world = player.getWorld();
+        final Player finalTarget = target;
+        Bukkit.broadcastMessage("§5🌀 §fKamisato §7active §5WORLD REJECTER §7— §f"
+                + target.getName() + " §7est rejeté vers un autre monde !");
+
+        // Dramatic effects on target
+        world.spawnParticle(Particle.PORTAL, target.getLocation().add(0, 1, 0),
+                40, 0.6, 0.8, 0.6, 0.2);
+        world.spawnParticle(Particle.DRAGON_BREATH, target.getLocation().add(0, 1, 0),
+                30, 0.5, 0.7, 0.5, 0.05);
+        world.strikeLightning(target.getLocation());
+        target.sendTitle("§5🌀 WORLD REJECTER", "§7Tu es rejeté vers un autre monde...", 5, 60, 15);
+        world.playSound(target.getLocation(), Sound.ENTITY_ENDERMAN_DEATH, 1.0f, 0.8f);
+        world.playSound(target.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 0.8f, 0.7f);
+
+        // Schedule death after 40 ticks (dramatic buildup)
+        ToaruUHC.getInstance().getServer().getScheduler().runTaskLater(
+                ToaruUHC.getInstance(), () -> {
+                    if (finalTarget.isOnline()) {
+                        finalTarget.damage(1000.0, player);
+                    }
+                }, 40L);
+
+        // CONSTRAINT: immediately
+        player.damage(15.0);
+        player.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 400, 1)); // Wither II 20s
+        uhcPlayer.setCooldown("kamisato", 60);
+        player.sendMessage("§5🌀 §7World Rejecter — §c-15 HP§7, Wither II 20s, pouvoir désactivé 60s — Ne peut être utilisé qu'une fois !");
 
         return true;
     }

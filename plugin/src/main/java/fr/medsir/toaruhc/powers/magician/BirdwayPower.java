@@ -5,6 +5,8 @@ import fr.medsir.toaruhc.models.UHCPlayer;
 import fr.medsir.toaruhc.powers.Power;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.ArrayList;
@@ -29,6 +31,8 @@ public class BirdwayPower extends Power {
               "Pentagramme — 5 nœuds explosifs en étoile, détonation en chaîne.",
               PowerType.MAGICIAN, 80, 40);
         setCustomModelId(27);
+        this.ultimateCost = 100;
+        this.ultimateCooldownSeconds = 240;
     }
 
     @Override
@@ -98,6 +102,87 @@ public class BirdwayPower extends Power {
                     }, (long)(i * DELAY_BETWEEN));
         }
         leivinia.sendMessage("§e⭐ Pentagramme déclenché — §f5 explosions §7en chaîne !");
+    }
+
+    @Override
+    public boolean activateUltimate(UHCPlayer uhcPlayer) {
+        if (!canUseUltimate(uhcPlayer)) return false;
+        Player leivinia = uhcPlayer.getBukkitPlayer();
+        if (leivinia == null) return false;
+
+        showUltimateIntro(leivinia, "GRAND PENTAGRAM", "Pentagramme de 50 blocs — implosion totale !");
+        consumeUltimateResources(uhcPlayer);
+
+        for (Player p : org.bukkit.Bukkit.getOnlinePlayers())
+            p.sendMessage("§e⭐ §fBirdway §7déploie §eGRAND PENTAGRAM §7— Pentagramme de 50 blocs !");
+
+        World world = leivinia.getWorld();
+        Location center = leivinia.getLocation().clone();
+
+        // 5 nœuds à rayon 25
+        List<Location> nodes = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            double angle = Math.toRadians(-90 + i * 144.0);
+            double nx = center.getX() + 25.0 * Math.cos(angle);
+            double nz = center.getZ() + 25.0 * Math.sin(angle);
+            nodes.add(new Location(world, nx, center.getY(), nz));
+        }
+
+        leivinia.sendTitle("§e⭐ GRAND PENTAGRAM", "§7Chargement...", 5, 50, 5);
+        world.playSound(center, Sound.BLOCK_BEACON_POWER_SELECT, 1.0f, 0.5f);
+
+        // Phase de charge: 40 ticks
+        new BukkitRunnable() {
+            int tick = 0;
+            @Override
+            public void run() {
+                if (tick >= 40) {
+                    cancel();
+                    // Attirer les ennemis proches
+                    for (UHCPlayer u : ToaruUHC.getInstance().getGameManager().getPlayers().values()) {
+                        if (!u.isAlive()) continue;
+                        Player enemy = u.getBukkitPlayer();
+                        if (enemy == null || !enemy.isOnline() || enemy.equals(leivinia)) continue;
+                        if (enemy.getLocation().distance(center) > 30.0) continue;
+                        enemy.addPotionEffect(new PotionEffect(PotionEffectType.LEVITATION, 40, 0));
+                        org.bukkit.util.Vector pull = center.toVector()
+                                .subtract(enemy.getLocation().toVector())
+                                .normalize().multiply(0.8);
+                        enemy.setVelocity(pull);
+                    }
+
+                    // Toutes les explosions simultanément
+                    for (Location nodeLoc : nodes) {
+                        world.createExplosion(nodeLoc, 5.0f, true, true, leivinia);
+                        world.spawnParticle(Particle.TOTEM, nodeLoc.clone().add(0, 1, 0),
+                                50, 0.8, 1.0, 0.8, 0.2);
+                    }
+                    world.playSound(center, Sound.ENTITY_GENERIC_EXPLODE, 2.0f, 0.5f);
+
+                    // Contraintes
+                    leivinia.damage(15.0);
+                    uhcPlayer.setMana(0);
+                    ToaruUHC.getInstance().getPowerManager().updateEnergyBar(uhcPlayer);
+                    uhcPlayer.setCooldown("birdway", 90);
+                    leivinia.sendMessage("§e⭐ §7Grand Pentagram — §c-15 HP§7, Mana vidé, pouvoir désactivé 90s");
+                    return;
+                }
+
+                // Particules sur chaque nœud + lignes en étoile
+                for (int i = 0; i < nodes.size(); i++) {
+                    Location node = nodes.get(i);
+                    world.spawnParticle(Particle.END_ROD, node.clone().add(0, 0.5, 0), 4, 0.2, 0.3, 0.2, 0.05);
+                    world.spawnParticle(Particle.TOTEM,   node.clone().add(0, 0.5, 0), 2, 0.1, 0.2, 0.1, 0.02);
+                    Location next = nodes.get((i + 2) % nodes.size());
+                    drawLine(world, node, next, tick);
+                }
+                if (tick % 10 == 0)
+                    world.playSound(center, Sound.BLOCK_AMETHYST_BLOCK_CHIME, 0.6f, 1.0f + tick * 0.03f);
+                tick++;
+            }
+        }.runTaskTimer(ToaruUHC.getInstance(), 0L, 1L);
+
+        return true;
     }
 
     private void drawLine(World world, Location from, Location to, int tick) {
