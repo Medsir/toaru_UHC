@@ -2,7 +2,7 @@
 
 # ⚡ Project Academy City : UHC Toaru
 
-Bienvenue sur le dépôt officiel du projet **UHC Toaru**. Ce projet vise à recréer l'univers de *A Certain Magical Index / Scientific Railgun* dans Minecraft via un serveur Paper ultra-compétitif.
+Bienvenue sur le dépôt officiel du projet **UHC Toaru**. Ce projet vise à recréer l'univers de *A Certain Magical Index / Scientific Railgun* dans Minecraft via un serveur Paper.
 
 ## 📌 Concept
 
@@ -55,17 +55,18 @@ Pour tester le plugin sur un serveur :
 
 * [x] Initialisation du projet Maven et API Paper.
 * [x] Création de la classe principale (`ToaruMain`).
-* [ ] Système d'événements pour les pouvoirs (En cours...).
-* [ ] Création du système de rôles (Academy City List).
-* [ ] Modélisation 3D de la pièce de monnaie (Mikoto).
+* [x] Système d'événements pour les pouvoirs (En cours...).
+* [x] Création du système de rôles (Academy City List).
+* [ ] Modélisation du ressource pack.
+* [ ] Ajustements d'équilibrage
 
 ---
 
 ## 👥 L'Équipe
 
-* **[Ton Nom]** : Lead Developer / Architecture Maven.
-* **[Ami B]** : Gameplay & Powers Developer.
-* **[Ami C]** : Designer Resource Pack & Équilibrage.
+* **Medsir** : Lead Developer / Designer Resource Pack & Équilibrage.
+* **Fryzim** : Gameplay & Powers Developer.
+* **Raion & Slyra** : Simple spectators
 
 ---
 
